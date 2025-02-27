@@ -24,8 +24,8 @@ const DigitalRain = ({
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // More refined character set - fewer special characters for cleaner look
-    const matrix = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
+    // Binary digits only for a more minimal look
+    const matrix = "01";
     const characters = matrix.split("");
 
     const fontSize = 12; // Smaller font size for more elegance
@@ -43,20 +43,19 @@ const DigitalRain = ({
       ctx.fillStyle = `rgba(0, 0, 0, ${opacity * 12})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Green text
-      ctx.fillStyle = "#0DFF1C";
+      // Neutral gray text instead of green
       ctx.font = `${fontSize}px monospace`;
 
       // For each column
       for (let i = 0; i < drops.length; i++) {
         // Only draw some characters (based on density)
         if (Math.random() > 0.5) {
-          // Draw a random character
+          // Draw a random character (0 or 1)
           const randomChar = characters[Math.floor(Math.random() * characters.length)];
           
-          // More subtle brightness variations
+          // More subtle brightness variations with gray tones
           const brightness = Math.random() * 0.2 + 0.2; // Lower brightness range
-          ctx.fillStyle = `rgba(13, 255, 28, ${brightness})`;
+          ctx.fillStyle = `rgba(180, 180, 180, ${brightness})`; // Neutral gray color
           
           // Draw the character
           ctx.fillText(
