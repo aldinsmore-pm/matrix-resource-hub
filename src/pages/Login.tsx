@@ -42,8 +42,8 @@ const Login = () => {
     setTestLoading(true);
     
     try {
-      // Test account details - using a valid email format
-      const testEmail = "test.user@example.net";
+      // Test account details - using your email
+      const testEmail = "aldinsmore.me@gmail.com";
       const testPassword = "testpassword123";
       
       // Try to sign in first
@@ -126,7 +126,7 @@ const Login = () => {
             </button>
             
             <p className="mt-2 text-xs text-gray-500">
-              This creates a test.user@example.net account with an active subscription
+              This creates a aldinsmore.me@gmail.com account with an active subscription
             </p>
           </div>
         </div>
