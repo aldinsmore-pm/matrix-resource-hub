@@ -63,11 +63,11 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Matrix-inspired colors
+				// Matrix-inspired colors with new primary purple
 				matrix: {
 					bg: '#0D0D0D',
 					'bg-alt': '#111111',
-					primary: '#0DFF1C', // Matrix green
+					primary: '#9b87f5', // Changed to purple
 					secondary: '#00FFFF', // Cyan
 					accent: '#FF00FF', // Magenta
 					muted: '#1C1C1C',
@@ -102,10 +102,10 @@ export default {
 				},
 				'pulse-glow': {
 					'0%, 100%': { 
-						boxShadow: '0 0 5px rgba(13, 255, 28, 0.3), 0 0 10px rgba(13, 255, 28, 0.2)' 
+						boxShadow: '0 0 5px rgba(155, 135, 245, 0.3), 0 0 10px rgba(155, 135, 245, 0.2)' 
 					},
 					'50%': { 
-						boxShadow: '0 0 20px rgba(13, 255, 28, 0.6), 0 0 30px rgba(13, 255, 28, 0.4)' 
+						boxShadow: '0 0 20px rgba(155, 135, 245, 0.6), 0 0 30px rgba(155, 135, 245, 0.4)' 
 					}
 				},
 				'fade-in': {

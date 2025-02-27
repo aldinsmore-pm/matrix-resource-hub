@@ -25,7 +25,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <a href="/" className="text-xl md:text-2xl font-bold text-matrix-primary text-glow">
-              MATRIX<span className="text-white">AI</span>
+              AI <span className="text-white">Unlocked</span>
             </a>
           </div>
 
