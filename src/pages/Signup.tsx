@@ -1,25 +1,44 @@
 
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SignupForm from "../components/auth/SignupForm";
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { supabase, isSubscribed } from "../lib/supabase";
 
 const Signup = () => {
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const user = JSON.parse(userData);
-      if (user.isSubscribed) {
-        navigate("/dashboard");
-      } else {
-        navigate("/subscription");
+    async function checkAuth() {
+      try {
+        // Check if user is already authenticated
+        const { data } = await supabase.auth.getUser();
+        
+        if (data.user) {
+          // Check if user has an active subscription
+          const hasSubscription = await isSubscribed();
+          
+          if (hasSubscription) {
+            navigate("/dashboard");
+          } else {
+            navigate("/subscription");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking auth:", error);
+      } finally {
+        setLoading(false);
       }
     }
+    
+    checkAuth();
   }, [navigate]);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-matrix-bg">

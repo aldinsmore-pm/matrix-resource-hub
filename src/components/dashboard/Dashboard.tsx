@@ -2,42 +2,61 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut } from "lucide-react";
+import { supabase, getProfile, getSubscription } from "../../lib/supabase";
 
-interface User {
+interface Profile {
+  id: string;
   email: string;
-  isSubscribed: boolean;
-  plan?: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
+interface Subscription {
+  id: string;
+  plan: string;
+  status: string;
+  current_period_end: string;
 }
 
 const Dashboard = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [activeSection, setActiveSection] = useState("overview");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in and has subscription
-    const userData = localStorage.getItem("user");
-    
-    if (!userData) {
-      navigate("/login");
-      return;
+    async function loadUserData() {
+      try {
+        // Get user profile
+        const userProfile = await getProfile();
+        setProfile(userProfile);
+        
+        // Get subscription info
+        const userSubscription = await getSubscription();
+        setSubscription(userSubscription);
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      } finally {
+        setLoading(false);
+      }
     }
     
-    const parsedUser = JSON.parse(userData) as User;
-    setUser(parsedUser);
-    
-    if (!parsedUser.isSubscribed) {
-      navigate("/subscription");
-    }
+    loadUserData();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate("/");
   };
 
-  if (!user) {
+  if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!profile) {
+    return <div className="min-h-screen flex items-center justify-center">User not found.</div>;
   }
 
   return (
@@ -101,7 +120,7 @@ const Dashboard = () => {
             <h2 className="text-xl font-bold text-white">Dashboard</h2>
             <div className="text-sm text-gray-400">
               <span className="bg-green-500 w-2 h-2 rounded-full inline-block mr-2"></span>
-              <span className="mr-1">{user.plan || "Subscribed"}</span>
+              <span className="mr-1">{subscription?.plan || "Subscribed"}</span>
             </div>
           </div>
         </header>
@@ -109,7 +128,9 @@ const Dashboard = () => {
         <main className="p-6">
           {activeSection === "overview" && (
             <div className="space-y-6">
-              <h3 className="text-xl font-bold mb-4">Welcome to your AI Unlocked dashboard</h3>
+              <h3 className="text-xl font-bold mb-4">
+                Welcome, {profile.first_name || profile.email.split('@')[0]}
+              </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <DashboardCard 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -22,19 +23,29 @@ const LoginForm = () => {
     setLoading(true);
     
     try {
-      // Simulate login API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock authentication - in a real app, call your auth API
-      localStorage.setItem("user", JSON.stringify({ 
-        email, 
-        isSubscribed: email.includes("premium") // For demo purposes
-      }));
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
       
       toast.success("Login successful");
-      navigate("/dashboard");
-    } catch (error) {
-      toast.error("Login failed. Please try again.");
+      
+      // Check if user has a subscription
+      const { data: subscriptionData } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('status', 'active')
+        .single();
+        
+      if (subscriptionData) {
+        navigate("/dashboard");
+      } else {
+        navigate("/subscription");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }

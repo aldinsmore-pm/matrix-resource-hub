@@ -1,26 +1,38 @@
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PricingTable from "../PricingTable";
+import { createSubscription } from "../../lib/supabase";
 
 const SubscriptionPage = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Mock function to handle subscription selection
-  const handleSubscribe = (plan: string) => {
-    // In a real app, this would redirect to payment processing
-    toast.success(`Selected ${plan} plan`);
+  // Function to handle subscription selection
+  const handleSubscribe = async (plan: string) => {
+    setIsLoading(true);
     
-    // For demo purposes, simulate a successful subscription
-    localStorage.setItem("user", JSON.stringify({ 
-      email: "user@example.com", 
-      isSubscribed: true,
-      plan: plan
-    }));
-    
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 1500);
+    try {
+      // In a real app, this would redirect to payment processing
+      toast.success(`Processing ${plan} plan subscription...`);
+      
+      // Create a subscription record in the database
+      const subscription = await createSubscription(plan, 30); // 30-day subscription
+      
+      if (!subscription) {
+        throw new Error("Failed to create subscription");
+      }
+      
+      toast.success(`Successfully subscribed to ${plan} plan!`);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to process subscription. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,7 +48,7 @@ const SubscriptionPage = () => {
       </div>
       
       <div className="mb-8">
-        <PricingTable onSubscribe={handleSubscribe} />
+        <PricingTable onSubscribe={handleSubscribe} disabled={isLoading} />
       </div>
       
       <div className="max-w-2xl mx-auto bg-matrix-muted p-6 rounded-lg border border-matrix-border mt-12">

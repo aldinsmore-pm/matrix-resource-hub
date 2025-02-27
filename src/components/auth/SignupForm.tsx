@@ -3,9 +3,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 const SignupForm = () => {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,7 @@ const SignupForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email || !password) {
+    if (!firstName || !lastName || !email || !password) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -28,13 +30,23 @@ const SignupForm = () => {
     setLoading(true);
     
     try {
-      // Simulate signup API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
+      });
+      
+      if (error) throw error;
       
       toast.success("Account created successfully");
       navigate("/subscription");
-    } catch (error) {
-      toast.error("Signup failed. Please try again.");
+    } catch (error: any) {
+      toast.error(error.message || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -47,18 +59,25 @@ const SignupForm = () => {
       </h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <User className="h-5 w-5 text-gray-500" />
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">First Name</label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-matrix-border rounded-md bg-matrix-muted text-white focus:outline-none focus:ring-1 focus:ring-matrix-primary focus:border-matrix-primary"
-              placeholder="John Doe"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="block w-full px-3 py-2 border border-matrix-border rounded-md bg-matrix-muted text-white focus:outline-none focus:ring-1 focus:ring-matrix-primary focus:border-matrix-primary"
+              placeholder="John"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Last Name</label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="block w-full px-3 py-2 border border-matrix-border rounded-md bg-matrix-muted text-white focus:outline-none focus:ring-1 focus:ring-matrix-primary focus:border-matrix-primary"
+              placeholder="Doe"
             />
           </div>
         </div>

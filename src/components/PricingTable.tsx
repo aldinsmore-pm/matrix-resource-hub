@@ -16,9 +16,10 @@ interface PricingPlan {
 
 interface PricingTableProps {
   onSubscribe?: (plan: string) => void;
+  disabled?: boolean;
 }
 
-const PricingTable = ({ onSubscribe }: PricingTableProps) => {
+const PricingTable = ({ onSubscribe, disabled = false }: PricingTableProps) => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">("monthly");
 
   const plans: PricingPlan[] = [
@@ -78,7 +79,7 @@ const PricingTable = ({ onSubscribe }: PricingTableProps) => {
   ];
 
   const handlePlanSelect = (planName: string) => {
-    if (onSubscribe) {
+    if (onSubscribe && !disabled) {
       onSubscribe(planName);
     }
   };
@@ -89,21 +90,23 @@ const PricingTable = ({ onSubscribe }: PricingTableProps) => {
         <div className="inline-flex p-1 rounded-lg bg-matrix-muted border border-matrix-border">
           <button
             onClick={() => setBillingCycle("monthly")}
+            disabled={disabled}
             className={`px-4 py-2 text-sm rounded-md transition-all ${
               billingCycle === "monthly"
                 ? "bg-matrix-bg text-matrix-primary"
                 : "text-gray-400 hover:text-white"
-            }`}
+            } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             Monthly
           </button>
           <button
             onClick={() => setBillingCycle("annually")}
+            disabled={disabled}
             className={`px-4 py-2 text-sm rounded-md transition-all ${
               billingCycle === "annually"
                 ? "bg-matrix-bg text-matrix-primary"
                 : "text-gray-400 hover:text-white"
-            }`}
+            } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             Annually <span className="text-xs text-matrix-secondary">Save 20%</span>
           </button>
@@ -116,7 +119,7 @@ const PricingTable = ({ onSubscribe }: PricingTableProps) => {
             key={plan.name}
             className={`relative card-container rounded-xl overflow-hidden transition-transform hover:-translate-y-2 ${
               plan.highlighted ? "border-matrix-primary animate-pulse-glow" : ""
-            }`}
+            } ${disabled ? "opacity-75" : ""}`}
           >
             {plan.highlighted && (
               <div className="absolute top-0 left-0 right-0 bg-matrix-primary text-black py-1 text-xs font-bold text-center">
@@ -145,13 +148,14 @@ const PricingTable = ({ onSubscribe }: PricingTableProps) => {
               
               <button 
                 onClick={() => handlePlanSelect(plan.name)}
+                disabled={disabled}
                 className={`w-full py-3 rounded-md font-medium transition-all ${
                   plan.highlighted
                     ? "bg-matrix-primary text-black hover:bg-opacity-90"
                     : "border border-matrix-primary text-matrix-primary hover:bg-matrix-primary hover:text-black"
-                }`}
+                } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
               >
-                {plan.buttonText}
+                {disabled ? "Processing..." : plan.buttonText}
               </button>
             </div>
           </div>
