@@ -8,9 +8,11 @@ import PricingTable from "../components/PricingTable";
 import Footer from "../components/Footer";
 import DigitalRain from "../components/DigitalRain";
 import { Database, FileText, BrainCircuit, Network, ArrowUpRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -87,6 +89,10 @@ const Index = () => {
       link: "#"
     }
   ];
+
+  const handleSubscribe = (plan: string) => {
+    navigate("/signup");
+  };
 
   return (
     <div className={`min-h-screen bg-matrix-bg transition-opacity duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}>
@@ -217,7 +223,7 @@ const Index = () => {
               </p>
             </div>
             
-            <PricingTable />
+            <PricingTable onSubscribe={handleSubscribe} />
           </div>
         </section>
         
@@ -232,14 +238,14 @@ const Index = () => {
                 Join hundreds of forward-thinking companies that are leveraging our resources to implement AI successfully.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="#pricing" className="matrix-btn">
-                  Subscribe Now
+                <a href="/signup" className="matrix-btn">
+                  Sign Up Now
                 </a>
                 <a 
-                  href="#" 
+                  href="/login" 
                   className="px-6 py-3 border border-gray-700 hover:border-gray-500 rounded-md text-gray-300 hover:text-white transition-all duration-300"
                 >
-                  Schedule Demo
+                  Log In
                 </a>
               </div>
             </div>

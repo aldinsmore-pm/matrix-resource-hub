@@ -1,10 +1,15 @@
 
 import { useState, useEffect } from "react";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, User } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -12,8 +17,31 @@ const Navbar = () => {
     };
 
     window.addEventListener("scroll", handleScroll);
+    
+    // Check authentication status
+    const checkAuth = () => {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        setIsLoggedIn(true);
+        const user = JSON.parse(userData);
+        setHasSubscription(user.isSubscribed);
+      } else {
+        setIsLoggedIn(false);
+        setHasSubscription(false);
+      }
+    };
+    
+    checkAuth();
+    
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setIsLoggedIn(false);
+    setHasSubscription(false);
+    navigate("/");
+  };
 
   return (
     <nav
@@ -49,9 +77,34 @@ const Navbar = () => {
               </div>
             </div>
 
-            <a href="#pricing" className="matrix-btn">
-              Subscribe
-            </a>
+            {isLoggedIn ? (
+              <div className="flex items-center space-x-4">
+                <a 
+                  href="/dashboard" 
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Dashboard
+                </a>
+                <button 
+                  onClick={handleLogout}
+                  className="text-matrix-primary hover:text-matrix-primary hover:underline transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <a 
+                  href="/login" 
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Log In
+                </a>
+                <a href="/signup" className="matrix-btn">
+                  Sign Up
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -81,13 +134,30 @@ const Navbar = () => {
             <MobileNavLink href="#ai-training">AI Training</MobileNavLink>
           </div>
           
-          <div className="pt-3">
-            <a
-              href="#pricing"
-              className="block w-full text-center matrix-btn py-3"
-            >
-              Subscribe
-            </a>
+          <div className="pt-3 border-t border-matrix-border">
+            {isLoggedIn ? (
+              <>
+                <MobileNavLink href="/dashboard">Dashboard</MobileNavLink>
+                <button 
+                  onClick={handleLogout}
+                  className="block py-2 text-matrix-primary hover:underline w-full text-left"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <MobileNavLink href="/login">Log In</MobileNavLink>
+                <div className="pt-3">
+                  <a
+                    href="/signup"
+                    className="block w-full text-center matrix-btn py-3"
+                  >
+                    Sign Up
+                  </a>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -14,7 +14,11 @@ interface PricingPlan {
   buttonText: string;
 }
 
-const PricingTable = () => {
+interface PricingTableProps {
+  onSubscribe?: (plan: string) => void;
+}
+
+const PricingTable = ({ onSubscribe }: PricingTableProps) => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">("monthly");
 
   const plans: PricingPlan[] = [
@@ -72,6 +76,12 @@ const PricingTable = () => {
       buttonText: "Contact Sales"
     }
   ];
+
+  const handlePlanSelect = (planName: string) => {
+    if (onSubscribe) {
+      onSubscribe(planName);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -134,6 +144,7 @@ const PricingTable = () => {
               </ul>
               
               <button 
+                onClick={() => handlePlanSelect(plan.name)}
                 className={`w-full py-3 rounded-md font-medium transition-all ${
                   plan.highlighted
                     ? "bg-matrix-primary text-black hover:bg-opacity-90"
