@@ -90,7 +90,7 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen bg-matrix-bg transition-opacity duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}>
-      <DigitalRain />
+      <DigitalRain opacity={0.02} density={20} speed={0.6} />
       <Navbar />
       
       <main className="relative z-10">
