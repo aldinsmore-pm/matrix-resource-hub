@@ -42,50 +42,54 @@ const Login = () => {
     setTestLoading(true);
     
     try {
-      // Test account details
-      const testEmail = "test@example.com";
+      // Test account details - using a valid email format
+      const testEmail = "test.user@example.net";
       const testPassword = "testpassword123";
       
-      // Check if the test account exists
-      const { data: userData, error: fetchError } = await supabase.auth.signInWithPassword({
+      // Try to sign in first
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: testEmail,
         password: testPassword
       });
       
-      // If the account doesn't exist, create it
-      if (fetchError && fetchError.status === 400) {
-        // Create the test account
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: testEmail,
-          password: testPassword,
-          options: {
-            data: {
-              first_name: "Test",
-              last_name: "User"
-            }
-          }
-        });
-        
-        if (signUpError) throw signUpError;
-        
-        // Login with the new test account
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: testEmail,
-          password: testPassword
-        });
-        
-        if (loginError) throw loginError;
-        
-        // Create a subscription for the test user
-        await createSubscription("Professional", 365); // 1 year subscription
+      // If sign-in was successful
+      if (signInData.user) {
+        toast.success("Logged in as Test User");
+        navigate("/dashboard");
+        return;
       }
       
-      toast.success("Logged in as Test User");
+      // If the user doesn't exist, create a new account
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: testEmail,
+        password: testPassword,
+        options: {
+          data: {
+            first_name: "Test",
+            last_name: "User"
+          }
+        }
+      });
+      
+      if (signUpError) throw signUpError;
+      
+      // Auto-sign in with the new account
+      const { error: autoSignInError } = await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword
+      });
+      
+      if (autoSignInError) throw autoSignInError;
+      
+      // Create a subscription for the test user
+      await createSubscription("Professional", 365); // 1 year subscription
+      
+      toast.success("Test account created and logged in successfully");
       navigate("/dashboard");
       
     } catch (error: any) {
       console.error("Test login error:", error);
-      toast.error("Failed to create test account. Please try again.");
+      toast.error(error.message || "Failed to create test account. Please try again.");
     } finally {
       setTestLoading(false);
     }
@@ -122,7 +126,7 @@ const Login = () => {
             </button>
             
             <p className="mt-2 text-xs text-gray-500">
-              This creates a test@example.com account with an active subscription
+              This creates a test.user@example.net account with an active subscription
             </p>
           </div>
         </div>
