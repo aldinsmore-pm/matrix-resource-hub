@@ -55,11 +55,22 @@ const Login = () => {
       // If sign-in was successful
       if (signInData.user) {
         toast.success("Logged in as Test User");
+        
+        // Check if user has an active subscription
+        const hasSubscription = await isSubscribed();
+        
+        if (!hasSubscription) {
+          // Create a subscription for the user if one doesn't exist
+          await createSubscription("Professional", 365); // 1 year subscription
+          toast.success("Added subscription to your account");
+        }
+        
         navigate("/dashboard");
         return;
       }
       
-      // If the user doesn't exist, create a new account
+      // If login failed, we need to handle the case where account may exist
+      // but with different credentials. Let's try to create an account.
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: testEmail,
         password: testPassword,
@@ -71,21 +82,21 @@ const Login = () => {
         }
       });
       
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        if (signUpError.message.includes("already registered")) {
+          // The account exists but password is different
+          // For a real app, this would be a security concern
+          // For dev purposes, we'll inform the user
+          toast.error("Account exists but password is different. Check console for details.");
+          console.log("For development: The account exists but the password is different from what's being attempted.");
+          console.log("You may need to use the Supabase dashboard to reset or manage this account.");
+          return;
+        }
+        throw signUpError;
+      }
       
-      // Auto-sign in with the new account
-      const { error: autoSignInError } = await supabase.auth.signInWithPassword({
-        email: testEmail,
-        password: testPassword
-      });
-      
-      if (autoSignInError) throw autoSignInError;
-      
-      // Create a subscription for the test user
-      await createSubscription("Professional", 365); // 1 year subscription
-      
-      toast.success("Test account created and logged in successfully");
-      navigate("/dashboard");
+      toast.success("Account created! Check your email to confirm registration");
+      toast.info("Note: For development, you might want to disable email confirmation in Supabase");
       
     } catch (error: any) {
       console.error("Test login error:", error);
