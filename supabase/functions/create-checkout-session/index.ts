@@ -1,112 +1,113 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@12.1.1?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import Stripe from 'https://esm.sh/stripe@13.9.0?target=deno';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-billing-cycle',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Initialize Stripe
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+  apiVersion: '2023-10-16',
+});
 
 serve(async (req) => {
   // Handle CORS preflight request
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders,
-      status: 200,
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
     });
   }
 
   try {
-    // Get request body
     const { plan, userId, email, returnUrl } = await req.json();
+    const billingCycle = req.headers.get('X-Billing-Cycle') || 'monthly';
     
-    if (!plan || !userId || !email || !returnUrl) {
-      throw new Error("Missing required parameters");
+    if (!plan) {
+      throw new Error('Plan is required');
     }
-
-    console.log(`Creating checkout session for user ${userId}, plan ${plan}`);
-
-    // Initialize Stripe with the secret key
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
-
-    // Define price mapping logic - both as fallbacks and from env variables
-    const PRICE_MAPPING = {
-      "Starter": {
-        monthly: "price_1ParIkJ4RtGdwHKhTlKJxZPJ", // Example fallback price ID
-        annually: "price_1ParJVJ4RtGdwHKhVQYqy1Pu" // Example fallback price ID
+    
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
+    if (!email) {
+      throw new Error('Email is required');
+    }
+    
+    console.log(`Creating checkout session for ${plan} plan, billing cycle: ${billingCycle}`);
+    
+    // Map plan names to price IDs (these would be your actual Stripe price IDs)
+    const priceMap = {
+      Starter: {
+        monthly: 'price_starter_monthly',
+        annually: 'price_starter_annually'
       },
-      "Professional": {
-        monthly: "price_1ParL2J4RtGdwHKhw1GKGWky", // Example fallback price ID
-        annually: "price_1ParLKJ4RtGdwHKhK0cwyvCz" // Example fallback price ID
+      Professional: {
+        monthly: 'price_professional_monthly',
+        annually: 'price_professional_annually'
       },
-      "Enterprise": {
-        monthly: "price_1ParLtJ4RtGdwHKhBqrIEYvJ", // Example fallback price ID
-        annually: "price_1ParM6J4RtGdwHKhDIQi9XsK" // Example fallback price ID
+      Enterprise: {
+        monthly: 'price_enterprise_monthly',
+        annually: 'price_enterprise_annually'
       }
     };
 
-    // Determine the billing cycle from the metadata (default to monthly)
-    const billing = req.headers.get("X-Billing-Cycle") || "monthly";
+    // Get the appropriate price ID based on plan and billing cycle
+    const priceId = priceMap[plan as keyof typeof priceMap]?.[billingCycle as 'monthly' | 'annually'];
     
-    // Get the price ID
-    let priceId = PRICE_MAPPING[plan]?.[billing] || PRICE_MAPPING[plan]?.monthly;
-
-    // Override with environment variables if available
-    if (billing === "monthly") {
-      if (plan === "Starter" && Deno.env.get("STRIPE_STARTER_PRICE_ID")) {
-        priceId = Deno.env.get("STRIPE_STARTER_PRICE_ID") || "";
-      } else if (plan === "Professional" && Deno.env.get("STRIPE_PROFESSIONAL_PRICE_ID")) {
-        priceId = Deno.env.get("STRIPE_PROFESSIONAL_PRICE_ID") || "";
-      } else if (plan === "Enterprise" && Deno.env.get("STRIPE_ENTERPRISE_PRICE_ID")) {
-        priceId = Deno.env.get("STRIPE_ENTERPRISE_PRICE_ID") || "";
-      }
-    }
-
     if (!priceId) {
-      throw new Error(`Could not determine price ID for plan: ${plan}`);
+      throw new Error(`Invalid plan (${plan}) or billing cycle (${billingCycle})`);
     }
 
-    console.log(`Using price ID: ${priceId} for plan ${plan}`);
-
-    // Create a Stripe checkout session
+    // Create checkout session
     const session = await stripe.checkout.sessions.create({
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}&payment_status=success`,
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1,
+      }],
+      mode: 'subscription',
+      success_url: `${returnUrl}?payment_status=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}?payment_status=cancelled`,
       customer_email: email,
       client_reference_id: userId,
       metadata: {
         userId,
         plan,
-      },
+        billingCycle
+      }
     });
 
-    console.log(`Created checkout session: ${session.id} for user ${userId}`);
+    console.log(`Checkout session created: ${session.id}`);
 
-    // Return the session URL for redirect
     return new Response(
       JSON.stringify({ url: session.url }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+      { 
+        status: 200, 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json' 
+        } 
       }
     );
+
   } catch (error) {
     console.error(`Error creating checkout session: ${error.message}`);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+      JSON.stringify({ 
+        error: error.message || 'An unexpected error occurred' 
+      }),
+      { 
+        status: 400, 
+        headers: { 
+          ...corsHeaders,
+          'Content-Type': 'application/json' 
+        } 
       }
     );
   }

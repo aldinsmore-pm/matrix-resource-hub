@@ -24,8 +24,9 @@ const SubscriptionPage = () => {
       
       toast.info(`Processing ${plan} plan subscription...`);
       
-      // Use the current window origin for the return URL
-      const returnUrl = `${window.location.origin}/subscription`;
+      // Use the actual deployment URL for the return URL
+      const deploymentUrl = "https://www.learnwithaire.com";
+      const returnUrl = `${deploymentUrl}/subscription`;
       
       // Call our Supabase Edge Function to create a Stripe checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
