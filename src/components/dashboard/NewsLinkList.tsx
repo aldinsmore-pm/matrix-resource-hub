@@ -30,8 +30,26 @@ const NewsLinkList = () => {
         
         // Check if the response contains data
         if (data && data.data && Array.isArray(data.data)) {
-          setNewsItems(data.data);
-          console.log("Successfully fetched news from Edge Function:", data.data.length, "items");
+          // Validate and fix each link before setting state
+          const processedItems = data.data.map((item: NewsItem) => {
+            let link = item.link || "";
+            
+            // Ensure link starts with http
+            if (link && !link.startsWith('http')) {
+              link = `https://openai.com${link.startsWith('/') ? '' : '/'}${link}`;
+            }
+            
+            return {
+              ...item,
+              link: link || "https://openai.com/blog"
+            };
+          });
+          
+          setNewsItems(processedItems);
+          console.log("Successfully fetched news from Edge Function:", processedItems.length, "items");
+          processedItems.forEach((item, i) => {
+            console.log(`Item ${i}: ${item.title} - Link: ${item.link}`);
+          });
         } else {
           console.error("Invalid response format from Edge Function:", data);
           throw new Error('Invalid response format from Edge Function');
@@ -48,10 +66,10 @@ const NewsLinkList = () => {
         
         // Fallback to static data if Edge Function fails
         const mockNews = [
-          { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt4o' },
-          { id: '2', title: 'Introducing ChatGPT Enterprise', published_date: 'Mon, 10 May 2024 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-enterprise' },
-          { id: '3', title: 'DALL·E 3 Integration in ChatGPT', published_date: 'Fri, 05 May 2024 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-chatgpt' },
-          { id: '4', title: 'Research on AI Safety', published_date: 'Wed, 01 May 2024 08:45:00 GMT', link: 'https://openai.com/blog/ai-safety' }
+          { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt-4o' },
+          { id: '2', title: 'ChatGPT can now see, hear, and speak', published_date: 'Mon, 25 Sep 2023 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-can-now-see-hear-and-speak' },
+          { id: '3', title: 'DALL·E 3 is now available in ChatGPT Plus and Enterprise', published_date: 'Fri, 13 Oct 2023 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-is-now-available-in-chatgpt-plus-and-enterprise' },
+          { id: '4', title: 'GPTs are now available to all ChatGPT Plus and Team users', published_date: 'Wed, 06 Nov 2023 08:45:00 GMT', link: 'https://openai.com/blog/introducing-gpts' }
         ];
         
         setNewsItems(mockNews);
@@ -64,12 +82,17 @@ const NewsLinkList = () => {
   }, []);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    }).format(date);
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      }).format(date);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Unknown date";
+    }
   };
 
   if (loading) {
@@ -114,7 +137,7 @@ const NewsLinkList = () => {
       
       <div className="mt-4 text-right">
         <a 
-          href="https://openai.com/news" 
+          href="https://openai.com/blog" 
           className="text-matrix-primary hover:underline inline-flex items-center"
           target="_blank"
           rel="noopener noreferrer"

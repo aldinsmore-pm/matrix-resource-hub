@@ -15,7 +15,7 @@ serve(async (req) => {
 
   try {
     console.log("Fetching OpenAI news RSS feed");
-    const rssUrl = 'https://openai.com/news/rss.xml';
+    const rssUrl = 'https://openai.com/blog/rss.xml'; // Updated to blog RSS feed which is more reliable
     const response = await fetch(rssUrl);
     
     if (!response.ok) {
@@ -42,15 +42,38 @@ serve(async (req) => {
       const item = items[i];
       const title = item.querySelector("title")?.textContent || "Untitled";
       const pubDate = item.querySelector("pubDate")?.textContent || new Date().toUTCString();
-      const link = item.querySelector("link")?.textContent || "#";
-      const guid = item.querySelector("guid")?.textContent || `news-${i}`;
+      
+      // Extract link - ensure it's getting the correct URL
+      let link = item.querySelector("link")?.textContent || "";
+      
+      // If link is empty, try to get it from guid if it's a permalink
+      if (!link) {
+        const guid = item.querySelector("guid");
+        if (guid && guid.getAttribute("isPermaLink") === "true") {
+          link = guid.textContent || "";
+        }
+      }
+      
+      // Ensure the link is absolute
+      if (link && !link.startsWith('http')) {
+        link = `https://openai.com${link.startsWith('/') ? '' : '/'}${link}`;
+      }
+      
+      // Fallback if link is still empty
+      if (!link) {
+        link = `https://openai.com/blog`;
+      }
+      
+      const id = item.querySelector("guid")?.textContent || `news-${i}`;
       
       newsItems.push({
-        id: guid,
+        id: id,
         title: title,
         published_date: pubDate,
         link: link
       });
+      
+      console.log(`Processed item ${i}:`, { title, link });
     }
     
     return new Response(JSON.stringify({ data: newsItems }), {
@@ -60,12 +83,12 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error processing OpenAI news feed:", error);
     
-    // Fallback data
+    // Fallback data with correct links
     const fallbackNews = [
-      { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt4o' },
-      { id: '2', title: 'Introducing ChatGPT Enterprise', published_date: 'Mon, 10 May 2024 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-enterprise' },
-      { id: '3', title: 'DALL·E 3 Integration in ChatGPT', published_date: 'Fri, 05 May 2024 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-chatgpt' },
-      { id: '4', title: 'Research on AI Safety', published_date: 'Wed, 01 May 2024 08:45:00 GMT', link: 'https://openai.com/blog/ai-safety' }
+      { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt-4o' },
+      { id: '2', title: 'ChatGPT can now see, hear, and speak', published_date: 'Mon, 25 Sep 2023 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-can-now-see-hear-and-speak' },
+      { id: '3', title: 'DALL·E 3 is now available in ChatGPT Plus and Enterprise', published_date: 'Fri, 13 Oct 2023 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-is-now-available-in-chatgpt-plus-and-enterprise' },
+      { id: '4', title: 'GPTs are now available to all ChatGPT Plus and Team users', published_date: 'Wed, 06 Nov 2023 08:45:00 GMT', link: 'https://openai.com/blog/introducing-gpts' }
     ];
     
     return new Response(JSON.stringify({ 
