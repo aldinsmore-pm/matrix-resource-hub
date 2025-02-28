@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
@@ -7,6 +6,7 @@ import Signup from "./pages/Signup";
 import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import SubscriptionPage from "./components/subscription/SubscriptionPage";
+import SubscriptionConfirmation from "./components/subscription/SubscriptionConfirmation";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { Toaster } from "sonner";
 import "./App.css";
@@ -50,6 +50,14 @@ function App() {
           element={
             <ProtectedRoute requireSubscription={false}>
               <SubscriptionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/subscription-confirmation"
+          element={
+            <ProtectedRoute requireSubscription={false}>
+              <SubscriptionConfirmation />
             </ProtectedRoute>
           }
         />
