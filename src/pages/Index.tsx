@@ -6,17 +6,102 @@ import ResourceCard from "../components/ResourceCard";
 import NewsCard from "../components/NewsCard";
 import PricingTable from "../components/PricingTable";
 import Footer from "../components/Footer";
-import DigitalRain from "../components/DigitalRain";
 import { Database, FileText, BrainCircuit, Network, ArrowUpRight, Sparkles, BarChart4 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { toast } from "sonner";
+
+interface NewsItem {
+  id: string;
+  title: string;
+  published_date: string;
+  link: string;
+  source?: string;
+  // Additional fields for the homepage news display
+  excerpt?: string;
+  readTime?: string;
+  image?: string;
+}
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [latestNews, setLatestNews] = useState<NewsItem[]>([]);
+  const [loadingNews, setLoadingNews] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsLoaded(true);
+    fetchLatestNews();
   }, []);
+
+  // Fetch news from the NewsAPI Edge Function
+  const fetchLatestNews = async () => {
+    try {
+      setLoadingNews(true);
+      
+      // Fetch news from our Supabase Edge Function with NewsAPI integration
+      const { data, error: functionError } = await supabase.functions.invoke('newsapi');
+      
+      if (functionError) {
+        console.error("Error invoking Edge Function:", functionError);
+        throw new Error('Failed to fetch news from Edge Function');
+      }
+      
+      // Check if the response contains data
+      if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+        // Transform data to add the required fields for NewsCard component
+        const transformedData = data.data.slice(0, 3).map((item: NewsItem) => ({
+          ...item,
+          excerpt: `Latest AI developments and updates from ${item.source || 'various sources'}.`,
+          readTime: "3 min read",
+          image: getNewsImage(item.source || '')
+        }));
+        
+        setLatestNews(transformedData);
+        console.log("Successfully fetched news for homepage:", transformedData.length, "items");
+      } else {
+        console.error("Invalid or empty response from Edge Function:", data);
+        throw new Error('Invalid response from Edge Function');
+      }
+    } catch (error) {
+      console.error("Error fetching AI news for homepage:", error);
+      toast.error("Failed to load news");
+      
+      // Fallback to static data if Edge Function fails
+      setLatestNews(news);
+    } finally {
+      setLoadingNews(false);
+    }
+  };
+
+  // Helper function to get an image based on the news source
+  const getNewsImage = (source: string): string => {
+    // Default images for common news sources
+    const sourceImageMap: Record<string, string> = {
+      'OpenAI': 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1465&q=80',
+      'TechCrunch': 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
+      'Wired': 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1465&q=80',
+      'VentureBeat': 'https://images.unsplash.com/photo-1480694313141-fce5e697ee25?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
+    };
+    
+    // Return matching image or a default one
+    return sourceImageMap[source] || 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80';
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      }).format(date);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Recent";
+    }
+  };
 
   const resources = [
     {
@@ -63,30 +148,37 @@ const Index = () => {
     }
   ];
 
+  // Fallback news data
   const news = [
     {
+      id: "1",
       title: "New Research Shows 73% of Enterprises Struggling with AI Implementation",
       excerpt: "A recent study reveals the challenges that most enterprises face when implementing AI solutions, with insights on how to overcome them.",
       date: "May 15, 2023",
       readTime: "5 min read",
       image: "https://images.unsplash.com/photo-1480694313141-fce5e697ee25?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
-      link: "#"
+      link: "#",
+      published_date: "2023-05-15T10:00:00Z"
     },
     {
+      id: "2",
       title: "The Impact of Generative AI on Enterprise Operations",
       excerpt: "Explore how generative AI technologies are transforming business operations across various industries.",
       date: "May 12, 2023",
       readTime: "7 min read",
       image: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1465&q=80",
-      link: "#"
+      link: "#",
+      published_date: "2023-05-12T14:30:00Z"
     },
     {
+      id: "3",
       title: "Guide: Building an Effective AI Center of Excellence",
       excerpt: "Learn how to establish and grow an AI Center of Excellence to drive innovation throughout your organization.",
       date: "May 8, 2023",
       readTime: "10 min read",
       image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
-      link: "#"
+      link: "#",
+      published_date: "2023-05-08T09:15:00Z"
     }
   ];
 
@@ -149,21 +241,36 @@ const Index = () => {
                     Stay updated with the latest trends and developments in AI.
                   </p>
                   
-                  {/* News Feed */}
-                  <div className="space-y-6">
-                    {news.map((item, index) => (
-                      <div key={index} className="animate-fade-in-right" style={{ animationDelay: `${(index * 200)}ms` }}>
-                        <NewsCard {...item} />
-                      </div>
-                    ))}
-                  </div>
+                  {/* News Feed - Now with dynamic data from NewsAPI */}
+                  {loadingNews ? (
+                    <div className="h-48 flex items-center justify-center">
+                      <div className="w-8 h-8 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {latestNews.map((item, index) => (
+                        <div key={item.id} className="animate-fade-in-right" style={{ animationDelay: `${(index * 200)}ms` }}>
+                          <NewsCard 
+                            title={item.title}
+                            excerpt={item.excerpt || `Latest developments from ${item.source || 'the AI industry'}.`}
+                            date={formatDate(item.published_date)}
+                            readTime={item.readTime || "3 min read"}
+                            image={item.image || getNewsImage(item.source || '')}
+                            link={item.link}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   
                   <div className="mt-8 flex justify-center">
                     <a 
-                      href="#" 
+                      href="https://newsapi.org" 
                       className="inline-flex items-center text-matrix-primary hover:text-matrix-secondary transition-colors"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      <span>View All News</span>
+                      <span>Powered by NewsAPI</span>
                       <ArrowUpRight className="ml-1 w-4 h-4" />
                     </a>
                   </div>
