@@ -126,6 +126,9 @@ const PublishedResources = () => {
     let listItems = [];
     let listType: 'ordered' | 'unordered' | null = null;
 
+    // Hacker green color for resource content
+    const hackerGreen = "#14b859";
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
@@ -151,7 +154,7 @@ const PublishedResources = () => {
           // End of code block
           inCodeBlock = false;
           formattedElements.push(
-            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
+            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-opacity-50" style={{ borderColor: hackerGreen }}>
               <code>{currentCodeBlock.replace(/```/g, '')}</code>
             </pre>
           );
@@ -179,7 +182,7 @@ const PublishedResources = () => {
         
         const headingText = line.replace(/^\*\*|\*\*$/g, '');
         formattedElements.push(
-          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-matrix-primary">
+          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3" style={{ color: hackerGreen }}>
             {headingText}
           </h3>
         );
@@ -198,7 +201,7 @@ const PublishedResources = () => {
           currentParagraph = '';
         }
         formattedElements.push(
-          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary">
+          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4" style={{ color: hackerGreen }}>
             {line.substring(2)}
           </h2>
         );
@@ -216,7 +219,7 @@ const PublishedResources = () => {
           currentParagraph = '';
         }
         formattedElements.push(
-          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary/90">
+          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3" style={{ color: `${hackerGreen}E6` }}>
             {line.substring(3)}
           </h3>
         );
@@ -234,7 +237,7 @@ const PublishedResources = () => {
           currentParagraph = '';
         }
         formattedElements.push(
-          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary/80">
+          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2" style={{ color: `${hackerGreen}CC` }}>
             {line.substring(4)}
           </h4>
         );
@@ -273,7 +276,7 @@ const PublishedResources = () => {
               lines[i+1].trim().startsWith('• ') || 
               lines[i+1].startsWith('  '))) {
           formattedElements.push(
-            <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3">
+            <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3" style={{ color: `${hackerGreen}99` }}>
               {listItems.map((item, idx) => (
                 <li key={idx} className="text-gray-300">{item}</li>
               ))}
@@ -311,7 +314,7 @@ const PublishedResources = () => {
         if (i === lines.length - 1 || 
             !(/^\d+\.\s/.test(lines[i+1]) || lines[i+1].startsWith('  '))) {
           formattedElements.push(
-            <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3">
+            <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3" style={{ color: `${hackerGreen}99` }}>
               {listItems.map((item, idx) => (
                 <li key={idx} className="text-gray-300">{item}</li>
               ))}
@@ -336,7 +339,7 @@ const PublishedResources = () => {
         }
         
         formattedElements.push(
-          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-matrix-primary pl-4 py-1 my-4 italic text-gray-300">
+          <blockquote key={`quote-${formattedElements.length}`} className="pl-4 py-1 my-4 italic text-gray-300" style={{ borderLeft: `4px solid ${hackerGreen}` }}>
             {processBoldText(line.substring(2))}
           </blockquote>
         );
@@ -387,8 +390,8 @@ const PublishedResources = () => {
     
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        // This is a bold text section
-        return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+        // This is a bold text section - use the hacker green color
+        return <strong key={index} className="font-bold" style={{ color: "#14b859" }}>{part.slice(2, -2)}</strong>;
       }
       return part;
     });
