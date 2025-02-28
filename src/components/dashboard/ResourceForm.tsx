@@ -134,11 +134,15 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
     }
   };
 
-  const addTag = (tag: string) => {
-    const trimmedTag = tag.trim().toLowerCase();
+  const addTag = () => {
+    // Fix: Get the trimmed tag from the current input value
+    const trimmedTag = tagInput.trim().toLowerCase();
+    
+    // Only add if the tag is not empty and not already in the list
     if (trimmedTag && !tags.includes(trimmedTag)) {
       setTags([...tags, trimmedTag]);
-      setTagInput("");
+      setTagInput(""); // Clear the input after adding
+      console.log("Added tag:", trimmedTag, "Current tags:", [...tags, trimmedTag]);
     }
   };
 
@@ -148,8 +152,8 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag(tagInput);
+      e.preventDefault(); // Prevent form submission
+      addTag();
     }
   };
 
@@ -255,7 +259,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
             />
             <button
               type="button"
-              onClick={() => addTag(tagInput)}
+              onClick={() => addTag()}
               className="px-3 py-2 bg-matrix-primary/20 text-matrix-primary border-y border-r border-matrix-border rounded-r hover:bg-matrix-primary/30"
             >
               Add
@@ -270,7 +274,12 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
                   <button
                     type="button"
                     key={tag}
-                    onClick={() => addTag(tag)}
+                    onClick={() => {
+                      // Fix: Directly add the tag when clicking on a popular tag
+                      if (!tags.includes(tag)) {
+                        setTags([...tags, tag]);
+                      }
+                    }}
                     className="text-xs px-2 py-1 bg-matrix-bg-alt border border-matrix-border/50 rounded-full hover:bg-matrix-primary/10 hover:border-matrix-primary/30"
                   >
                     #{tag}
