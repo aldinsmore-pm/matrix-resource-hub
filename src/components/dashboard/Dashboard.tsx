@@ -141,7 +141,7 @@ const Dashboard = () => {
     }}>
         <div className="flex items-center justify-between mb-8">
           {sidebarOpen ? <h1 className="text-xl font-bold text-matrix-primary animate-pulse">
-              AI <span className="text-white">Unlocked</span>
+              AI <span className="text-white pipboy-text">Unlocked</span>
             </h1> : <span className="text-xl font-bold text-matrix-primary animate-pulse">AI</span>}
           <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-matrix-muted text-matrix-primary transition-all duration-300">
             <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${sidebarOpen ? '' : 'transform rotate-180'}`} />
@@ -189,15 +189,21 @@ const Dashboard = () => {
                 Welcome, {profile.first_name || profile.email.split('@')[0]}
               </h3>
               
-              <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-700 delay-200
+              {/* Two column layout for status cards */}
+              <div className={`grid grid-cols-2 gap-4 transition-all duration-700 delay-200
                 ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-5'}`}>
-                <DashboardCard title="Resources Available" value={recentResources.length.toString()} description="AI resources" color="bg-matrix-primary" />
-                <DashboardCard title="Documents" value="0" description="Saved documents" color="bg-matrix-secondary" />
-                <DashboardCard title="AI Tools" value="8" description="Available tools" color="bg-matrix-accent" />
+                <div className="space-y-4">
+                  <DashboardCard title="Resources Available" value={recentResources.length.toString()} description="AI resources" color="bg-matrix-primary" />
+                  <DashboardCard title="AI Tools" value="8" description="Available tools" color="bg-matrix-accent" />
+                </div>
+                <div className="space-y-4">
+                  <DashboardCard title="Documents" value="0" description="Saved documents" color="bg-matrix-secondary" />
+                  <DashboardCard title="Plan Status" value={subscription?.plan || "Free"} description="Current subscription" color="bg-matrix-primary" />
+                </div>
               </div>
               
-              {/* Game UI Split layout for resources and news links */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+              {/* Default two column layout for resources and news links */}
+              <div className="grid grid-cols-2 gap-6 mt-8">
                 <div className={`card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
                   transition-all duration-700 delay-300 transform hover:scale-[1.01] hover:border-matrix-primary/50
                   ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-x-5'}`} style={{
@@ -219,14 +225,28 @@ const Dashboard = () => {
               <div className={`mt-8 transition-all duration-700 delay-500
                 ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
                 <h4 className="text-lg font-semibold mb-4 pipboy-text">Your Content</h4>
-                <div className="card-container p-4 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30" style={{
-              boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
-            }}>
-                  {recentResources.length > 0 ? <div className="divide-y divide-matrix-border">
-                      {recentResources.map((resource, index) => <ResourceItem key={resource.id} title={resource.title} category={resource.category} date={formatDate(resource.created_at)} published={resource.published} onClick={() => navigate(`/dashboard/resources/${resource.id}`)} delay={index * 100} animationComplete={animationComplete} />)}
-                    </div> : <div className="text-center py-6 text-gray-400">
-                      <p>No resources found. Create your first resource in the Resources section.</p>
-                    </div>}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="card-container p-4 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30" style={{
+                boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
+              }}>
+                    <h5 className="text-base font-medium mb-3 pipboy-text">Recent Resources</h5>
+                    {recentResources.length > 0 ? <div className="divide-y divide-matrix-border">
+                        {recentResources.slice(0, 3).map((resource, index) => <ResourceItem key={resource.id} title={resource.title} category={resource.category} date={formatDate(resource.created_at)} published={resource.published} onClick={() => navigate(`/dashboard/resources/${resource.id}`)} delay={index * 100} animationComplete={animationComplete} />)}
+                      </div> : <div className="text-center py-6 text-gray-400 pipboy-text">
+                        <p>No resources found.</p>
+                      </div>}
+                  </div>
+                  
+                  <div className="card-container p-4 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30" style={{
+                boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
+              }}>
+                    <h5 className="text-base font-medium mb-3 pipboy-text">Quick Actions</h5>
+                    <div className="space-y-3">
+                      <QuickActionButton icon={<Book className="w-4 h-4 mr-2" />} label="Create New Resource" onClick={() => setActiveSection("resources")} />
+                      <QuickActionButton icon={<FileText className="w-4 h-4 mr-2" />} label="Explore AI Tools" onClick={() => setActiveSection("tools")} />
+                      <QuickActionButton icon={<Settings className="w-4 h-4 mr-2" />} label="Account Settings" onClick={() => setActiveSection("settings")} />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>}
@@ -248,6 +268,28 @@ const Dashboard = () => {
         </main>
       </div>
     </div>;
+};
+
+// New Quick Action Button Component
+const QuickActionButton = ({
+  icon,
+  label,
+  onClick
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) => {
+  return (
+    <button 
+      onClick={onClick}
+      className="w-full flex items-center p-3 rounded-md border border-matrix-border/50 bg-matrix-bg-alt/30 transition-all duration-300 
+        hover:bg-matrix-primary/10 hover:border-matrix-primary/40 text-left group"
+    >
+      <span className="text-matrix-primary">{icon}</span>
+      <span className="pipboy-text text-gray-300 group-hover:text-white">{label}</span>
+    </button>
+  );
 };
 
 // Helper function to format dates

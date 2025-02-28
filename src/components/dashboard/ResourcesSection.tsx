@@ -10,7 +10,7 @@ const ResourcesSection = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold">Resources</h3>
+        <h3 className="text-xl font-bold pipboy-text">Resources</h3>
         <div className="flex bg-matrix-bg rounded-lg overflow-hidden">
           <button
             onClick={() => setMode("view")}
@@ -21,7 +21,7 @@ const ResourcesSection = () => {
             }`}
           >
             <Newspaper className="w-4 h-4 mr-2" />
-            View Resources
+            <span className="pipboy-text">View Resources</span>
           </button>
           <button
             onClick={() => setMode("manage")}
@@ -32,7 +32,7 @@ const ResourcesSection = () => {
             }`}
           >
             <Settings className="w-4 h-4 mr-2" />
-            Manage Content
+            <span className="pipboy-text">Manage Content</span>
           </button>
         </div>
       </div>
