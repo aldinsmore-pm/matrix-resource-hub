@@ -1,36 +1,58 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { createPurchase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 const SubscriptionPage = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
-  // Function to handle purchase
+  // Function to handle purchase via Stripe
   const handlePurchase = async () => {
     setIsLoading(true);
     
     try {
-      // In a real app, this would redirect to Stripe for payment processing
-      toast.success("Processing your purchase...");
+      toast.info("Preparing checkout...");
       
-      // Create a purchase record in the database
-      // Using the specific Stripe product ID: prod_RrL1RLRnascFV8
-      const purchase = await createPurchase("prod_RrL1RLRnascFV8");
+      // Get the current URL for the return URL
+      const returnUrl = window.location.origin;
       
-      if (!purchase) {
-        throw new Error("Failed to create purchase record");
+      // Call the Supabase Edge Function to create a checkout session
+      const { data: user } = await supabase.auth.getUser();
+      
+      if (!user.user) {
+        throw new Error("You must be logged in to make a purchase");
       }
       
-      toast.success("Thank you for your purchase!");
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1500);
+      // Get JWT token for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Authentication session not found");
+      }
+      
+      // Create the checkout session
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ 
+          productId: "prod_RrL1RLRnascFV8", 
+          returnUrl 
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = result.url;
+      } else {
+        throw new Error(result.error || "Failed to create checkout session");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to process purchase. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

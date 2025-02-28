@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import LoginForm from "../components/auth/LoginForm";
-import { supabase, isSubscribed, createSubscription } from "../lib/supabase";
+import { supabase, getSubscription, isSubscribed, createSubscription } from "../lib/supabase";
 import { toast } from "sonner";
 
 const Login = () => {
