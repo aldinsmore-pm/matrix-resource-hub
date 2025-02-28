@@ -118,6 +118,17 @@
       box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
     }
   }
+  
+  /* Pip-Boy style text glow effect for game-like UI */
+  .pipboy-text {
+    @apply transition-all duration-300;
+  }
+  
+  .pipboy-text:hover {
+    text-shadow: 0 0 8px rgba(139, 92, 246, 0.7), 0 0 12px rgba(139, 92, 246, 0.4);
+    color: white;
+    letter-spacing: 0.02em;
+  }
 }
 
 @keyframes bounce {

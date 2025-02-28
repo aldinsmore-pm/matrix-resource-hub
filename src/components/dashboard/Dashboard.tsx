@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut, Menu, ChevronLeft } from "lucide-react";
@@ -6,6 +7,7 @@ import ResourcesSection from "./ResourcesSection";
 import ResourcesLinkList from "./ResourcesLinkList";
 import NewsLinkList from "./NewsLinkList";
 import { toast } from "sonner";
+
 interface Profile {
   id: string;
   email: string;
@@ -13,12 +15,14 @@ interface Profile {
   last_name: string | null;
   avatar_url: string | null;
 }
+
 interface Subscription {
   id: string;
   plan: string;
   status: string;
   current_period_end: string;
 }
+
 interface Resource {
   id: string;
   title: string;
@@ -26,6 +30,7 @@ interface Resource {
   created_at: string;
   published: boolean;
 }
+
 const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -153,7 +158,7 @@ const Dashboard = () => {
           <div className="pt-6 mt-6 border-t border-matrix-border">
             <button onClick={handleLogout} className={`flex items-center px-3 py-2 w-full text-gray-400 hover:text-white hover:bg-matrix-muted rounded transition-colors ${!sidebarOpen && 'justify-center'}`}>
               <LogOut className="w-5 h-5 mr-3" />
-              {sidebarOpen && <span>Log Out</span>}
+              {sidebarOpen && <span className="pipboy-text">Log Out</span>}
             </button>
           </div>
         </nav>
@@ -168,9 +173,9 @@ const Dashboard = () => {
               {!sidebarOpen && <button onClick={toggleSidebar} className="mr-3 hover:bg-matrix-muted p-1 rounded-md transition-all duration-300">
                   <Menu className="w-5 h-5 text-matrix-primary" />
                 </button>}
-              <h2 className="text-xl font-bold text-white">Dashboard</h2>
+              <h2 className="text-xl font-bold text-white pipboy-text">Dashboard</h2>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-gray-400 pipboy-text">
               <span className="bg-green-500 w-2 h-2 rounded-full inline-block mr-2"></span>
               <span className="mr-1">{subscription?.plan || "Free Plan"}</span>
             </div>
@@ -179,7 +184,7 @@ const Dashboard = () => {
         
         <main className="p-6">
           {activeSection === "overview" && <div className="space-y-6">
-              <h3 className={`text-xl font-bold mb-4 transition-all duration-700 delay-100 
+              <h3 className={`text-xl font-bold mb-4 transition-all duration-700 delay-100 pipboy-text
                 ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-5'}`}>
                 Welcome, {profile.first_name || profile.email.split('@')[0]}
               </h3>
@@ -213,7 +218,7 @@ const Dashboard = () => {
               {/* Your content links - game UI style */}
               <div className={`mt-8 transition-all duration-700 delay-500
                 ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
-                <h4 className="text-lg font-semibold mb-4">Your Content</h4>
+                <h4 className="text-lg font-semibold mb-4 pipboy-text">Your Content</h4>
                 <div className="card-container p-4 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30" style={{
               boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
             }}>
@@ -236,8 +241,8 @@ const Dashboard = () => {
               <div className="text-center p-8 card-container rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30" style={{
             boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
           }}>
-                <h3 className="text-xl font-bold mb-2">{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h3>
-                <p className="text-gray-400">This section is under development.</p>
+                <h3 className="text-xl font-bold mb-2 pipboy-text">{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h3>
+                <p className="text-gray-400 pipboy-text">This section is under development.</p>
               </div>
             </div>}
         </main>
@@ -274,7 +279,7 @@ const SidebarItem = ({
 }) => {
   return <button onClick={onClick} className={`flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 w-full rounded transition-all duration-300 ${active ? "bg-matrix-primary/20 text-matrix-primary" : "text-gray-400 hover:text-white hover:bg-matrix-muted"}`} title={collapsed ? label : undefined}>
       <span className={collapsed ? '' : 'mr-3'}>{icon}</span>
-      {!collapsed && <span>{label}</span>}
+      {!collapsed && <span className="pipboy-text">{label}</span>}
       {active && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-matrix-primary"></span>}
     </button>;
 };
@@ -289,7 +294,17 @@ const DashboardCard = ({
   description: string;
   color: string;
 }) => {
-  return;
+  return (
+    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
+      transition-all duration-300 transform hover:scale-[1.03] hover:border-matrix-primary/50"
+      style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
+      <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-3`}>
+        <span className="text-black font-bold">{value}</span>
+      </div>
+      <h4 className="font-semibold text-white pipboy-text">{title}</h4>
+      <p className="text-sm text-gray-400 pipboy-text">{description}</p>
+    </div>
+  );
 };
 const ResourceItem = ({
   title,
@@ -314,14 +329,14 @@ const ResourceItem = ({
   }}>
       <div className="flex justify-between">
         <div>
-          <h5 className="font-medium text-white">{title}</h5>
+          <h5 className="font-medium text-white pipboy-text">{title}</h5>
           <div className="flex items-center mt-1">
-            <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded">{category}</span>
-            <span className="text-xs text-gray-500 ml-2">{date}</span>
-            {published ? <span className="text-xs px-2 py-0.5 bg-green-900/30 text-green-400 rounded ml-2">Published</span> : <span className="text-xs px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded ml-2">Draft</span>}
+            <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded pipboy-text">{category}</span>
+            <span className="text-xs text-gray-500 ml-2 pipboy-text">{date}</span>
+            {published ? <span className="text-xs px-2 py-0.5 bg-green-900/30 text-green-400 rounded ml-2 pipboy-text">Published</span> : <span className="text-xs px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded ml-2 pipboy-text">Draft</span>}
           </div>
         </div>
-        <button onClick={onClick} className="text-matrix-primary hover:underline text-sm transition-all duration-300 hover:text-matrix-primary/80">
+        <button onClick={onClick} className="text-matrix-primary hover:underline text-sm transition-all duration-300 hover:text-matrix-primary/80 pipboy-text">
           View
         </button>
       </div>
