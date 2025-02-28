@@ -20,42 +20,40 @@ const NewsLinkList = () => {
       try {
         setLoading(true);
         
-        // Use directly curated news items with verified working links and more recent articles
-        const directNews = [
-          { id: '1', title: 'The next generation of Claude is here', published_date: 'Mon, 09 Jul 2024 10:00:00 GMT', link: 'https://openai.com/blog/the-next-generation-of-claude-is-here' },
-          { id: '2', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt-4o' },
-          { id: '3', title: 'ChatGPT can now see, hear, and speak', published_date: 'Mon, 25 Sep 2023 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-can-now-see-hear-and-speak' },
-          { id: '4', title: 'DALL·E 3 is now available in ChatGPT Plus and Enterprise', published_date: 'Fri, 13 Oct 2023 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-is-now-available-in-chatgpt-plus-and-enterprise' }
-        ];
+        // Fetch news from our Supabase Edge Function with curated data
+        const { data, error: functionError } = await supabase.functions.invoke('openai-news');
         
-        setNewsItems(directNews);
-        console.log("Using direct news items with verified links");
+        if (functionError) {
+          console.error("Error invoking Edge Function:", functionError);
+          throw new Error('Failed to fetch news from Edge Function');
+        }
         
-        // Try to fetch from Edge Function in the background for future refreshes
-        try {
-          const { data } = await supabase.functions.invoke('openai-news');
-          if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-            // Only update if we got valid data
-            const processedItems = data.data.map((item: NewsItem) => ({
-              ...item,
-              // Ensure link is complete and valid
-              link: item.link && item.link.startsWith('http') 
-                ? item.link 
-                : `https://openai.com/blog/${item.link?.replace(/^\//, '')}`
-            }));
-            
-            if (processedItems.length > 0) {
-              setNewsItems(processedItems);
-              console.log("Updated with Edge Function data:", processedItems.length, "items");
-            }
-          }
-        } catch (innerError) {
-          // Just log the error but don't change the UI since we already have direct news items
-          console.error("Background fetch from Edge Function failed:", innerError);
+        // Check if the response contains data
+        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+          setNewsItems(data.data);
+          console.log("Successfully fetched news from Edge Function:", data.data.length, "items");
+          
+          // Log the links to verify they're working
+          data.data.forEach((item: NewsItem, index: number) => {
+            console.log(`News item ${index + 1}: "${item.title}" - Link: ${item.link}`);
+          });
+        } else {
+          console.error("Invalid or empty response from Edge Function:", data);
+          throw new Error('Invalid response from Edge Function');
         }
       } catch (error) {
-        console.error("Error in news component:", error);
+        console.error("Error fetching AI news:", error);
         setError("Failed to load news");
+        
+        // Fallback to static data if Edge Function fails
+        const fallbackNews = [
+          { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt-4o' },
+          { id: '2', title: 'Introducing the OpenAI Overview', published_date: 'Mon, 22 Apr 2024 14:30:00 GMT', link: 'https://openai.com/blog/introducing-the-openai-overview' },
+          { id: '3', title: 'Sora: Video generation model', published_date: 'Thu, 15 Feb 2024 09:15:00 GMT', link: 'https://openai.com/sora' },
+          { id: '4', title: 'ChatGPT can now see, hear, and speak', published_date: 'Mon, 25 Sep 2023 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-can-now-see-hear-and-speak' }
+        ];
+        
+        setNewsItems(fallbackNews);
       } finally {
         setLoading(false);
       }
@@ -88,7 +86,7 @@ const NewsLinkList = () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold mb-4">OpenAI Latest News</h3>
+      <h3 className="text-xl font-semibold mb-4">AI Latest News</h3>
       
       {newsItems.length > 0 ? (
         <ul className="space-y-3">
@@ -125,7 +123,7 @@ const NewsLinkList = () => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          <span>View all OpenAI news</span>
+          <span>View all AI news</span>
           <ArrowUpRight className="ml-1 w-4 h-4" />
         </a>
       </div>
