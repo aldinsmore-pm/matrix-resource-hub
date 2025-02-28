@@ -37,6 +37,16 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
           console.error("Session error:", sessionError);
           throw sessionError;
         }
+
+        // Check if we have a session
+        if (!sessionData.session) {
+          console.log("No active session found");
+          if (isMounted) {
+            setUser(null);
+            setLoading(false);
+          }
+          return;
+        }
         
         // Check if user is authenticated
         const { data, error } = await supabase.auth.getUser();
@@ -67,17 +77,16 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
               }
             }
           }
+          
+          setLoading(false);
         }
       } catch (error: any) {
         console.error("Error checking authentication:", error);
         if (isMounted) {
           setAuthError(error.message || "Authentication error occurred");
-          toast.error("Authentication error. Please try logging in again.");
-        }
-      } finally {
-        if (isMounted) {
-          clearTimeout(authTimeout);
+          setUser(null);
           setLoading(false);
+          toast.error("Authentication error. Please try logging in again.");
         }
       }
     }
@@ -90,6 +99,13 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
         console.log("Auth state changed:", event);
         
         if (isMounted) {
+          if (event === 'SIGNED_OUT') {
+            setUser(null);
+            setHasSubscription(false);
+            setLoading(false);
+            return;
+          }
+          
           setUser(session?.user || null);
           
           if (session?.user && requireSubscription) {
@@ -97,13 +113,17 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
               const subscribed = await isSubscribed();
               if (isMounted) {
                 setHasSubscription(subscribed);
+                setLoading(false);
               }
             } catch (error) {
               console.error("Error checking subscription on auth change:", error);
               if (isMounted) {
                 setHasSubscription(false);
+                setLoading(false);
               }
             }
+          } else {
+            setLoading(false);
           }
         }
       }
@@ -115,7 +135,7 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
       // Clean up the subscription
       authListener.subscription.unsubscribe();
     };
-  }, [requireSubscription, location.pathname, loading]);
+  }, [requireSubscription, location.pathname]);
 
   // Show error state
   if (authError) {
