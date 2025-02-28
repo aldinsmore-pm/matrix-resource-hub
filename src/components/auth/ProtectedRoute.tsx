@@ -18,7 +18,10 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
 
   useEffect(() => {
     let isMounted = true;
-    const authTimeout = setTimeout(() => {
+    let authTimeout: NodeJS.Timeout;
+    
+    // Set a timeout to prevent infinite loading
+    authTimeout = setTimeout(() => {
       if (isMounted && loading) {
         console.error("Authentication check timed out after 10 seconds");
         setAuthError("Authentication check timed out. Please try refreshing the page.");
@@ -44,6 +47,7 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
           if (isMounted) {
             setUser(null);
             setLoading(false);
+            clearTimeout(authTimeout);
           }
           return;
         }
@@ -78,6 +82,7 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
             }
           }
           
+          clearTimeout(authTimeout);
           setLoading(false);
         }
       } catch (error: any) {
@@ -85,6 +90,7 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
         if (isMounted) {
           setAuthError(error.message || "Authentication error occurred");
           setUser(null);
+          clearTimeout(authTimeout);
           setLoading(false);
           toast.error("Authentication error. Please try logging in again.");
         }
@@ -99,6 +105,8 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
         console.log("Auth state changed:", event);
         
         if (isMounted) {
+          clearTimeout(authTimeout);
+          
           if (event === 'SIGNED_OUT') {
             setUser(null);
             setHasSubscription(false);
