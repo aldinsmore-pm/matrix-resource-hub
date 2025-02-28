@@ -30,8 +30,9 @@ const SubscriptionPage = () => {
         throw new Error("Authentication session not found");
       }
       
-      // Create the checkout session
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`, {
+      // Create the checkout session - use the full Supabase URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://blnaxvnuzikfelwcwzft.supabase.co';
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,15 +44,21 @@ const SubscriptionPage = () => {
         }),
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to create checkout session: ${errorText}`);
+      }
+      
       const result = await response.json();
       
-      if (response.ok && result.url) {
+      if (result.url) {
         // Redirect to Stripe Checkout
         window.location.href = result.url;
       } else {
-        throw new Error(result.error || "Failed to create checkout session");
+        throw new Error("Failed to create checkout session: No URL returned");
       }
     } catch (error: any) {
+      console.error("Checkout error:", error);
       toast.error(error.message || "Failed to process purchase. Please try again.");
       setIsLoading(false);
     }
