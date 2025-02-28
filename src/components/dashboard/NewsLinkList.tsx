@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight, CalendarIcon, NewspaperIcon } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
 
 interface NewsItem {
@@ -23,38 +24,100 @@ const NewsLinkList = () => {
         setError(null);
         console.log("Dashboard: Fetching AI news");
         
-        // Try to fetch from a public API endpoint (no CORS issues)
-        const response = await fetch("https://api.spaceflightnewsapi.net/v4/articles?limit=5");
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch news: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log("Received news data:", data);
-        
-        if (data && data.results && Array.isArray(data.results)) {
-          // Map to our NewsItem format
-          const transformedData = data.results.map((item: any, index: number) => ({
-            id: index.toString(),
-            title: item.title,
-            published_date: item.published_at || new Date().toISOString(),
-            link: item.url,
-            source: item.news_site
-          }));
+        // First try to fetch from our OpenAI news Edge Function
+        try {
+          const { data, error: functionError } = await supabase.functions.invoke('openai-news');
           
-          setNewsItems(transformedData);
-          console.log("Transformed news data:", transformedData);
-        } else {
-          throw new Error("Invalid data format received");
+          if (functionError) {
+            console.error("Error from Edge Function:", functionError);
+            throw new Error("Failed to fetch from Edge Function");
+          }
+          
+          if (data && data.data && Array.isArray(data.data)) {
+            // Format the data
+            const formattedData = data.data.map((item: any) => ({
+              ...item,
+              source: extractSourceFromUrl(item.link)
+            }));
+            
+            setNewsItems(formattedData);
+            console.log("Successfully fetched AI news from Edge Function");
+            return;
+          }
+          
+          throw new Error("Invalid data format from Edge Function");
+        } catch (edgeFunctionError) {
+          console.error("Edge Function error:", edgeFunctionError);
+          // Continue to fallback method
         }
+        
+        // Fallback: Try a direct fetch to the news API
+        try {
+          const response = await fetch("https://api.spaceflightnewsapi.net/v4/articles?limit=5&search=ai%20artificial%20intelligence");
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch news: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log("Received news data from API:", data);
+          
+          if (data && data.results && Array.isArray(data.results)) {
+            // Map to our NewsItem format and filter for AI-related news
+            const transformedData = data.results
+              .filter((item: any) => 
+                item.title.toLowerCase().includes('ai') || 
+                item.summary.toLowerCase().includes('artificial intelligence') ||
+                item.summary.toLowerCase().includes('machine learning')
+              )
+              .map((item: any, index: number) => ({
+                id: index.toString(),
+                title: item.title,
+                published_date: item.published_at || new Date().toISOString(),
+                link: item.url,
+                source: item.news_site
+              }));
+            
+            if (transformedData.length > 0) {
+              setNewsItems(transformedData);
+              console.log("Transformed AI-filtered news data:", transformedData);
+              return;
+            }
+          }
+          
+          throw new Error("No AI-related news found");
+        } catch (apiError) {
+          console.error("API error:", apiError);
+          // Continue to static fallback
+        }
+        
+        // If all else fails, use static data
+        useStaticFallback();
       } catch (error: any) {
-        console.error("Error fetching news:", error);
+        console.error("Error in news fetch process:", error);
         setError(error.message || "Failed to load news");
         toast.error("Failed to load news feed, showing cached content");
         useStaticFallback();
       } finally {
         setLoading(false);
+      }
+    }
+    
+    // Extract source name from URL
+    function extractSourceFromUrl(url: string): string {
+      try {
+        const hostname = new URL(url).hostname;
+        // Remove www. and get the domain name
+        const domain = hostname.replace(/^www\./i, '');
+        // Get the main part (e.g., 'openai' from 'openai.com')
+        const parts = domain.split('.');
+        if (parts.length >= 2) {
+          // Capitalize first letter
+          return parts[parts.length - 2].charAt(0).toUpperCase() + parts[parts.length - 2].slice(1);
+        }
+        return domain;
+      } catch {
+        return "News Source";
       }
     }
     
@@ -97,7 +160,7 @@ const NewsLinkList = () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold mb-4">AI and Tech News</h3>
+      <h3 className="text-xl font-semibold mb-4">AI News</h3>
       
       {error && (
         <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-md mb-4">
@@ -144,12 +207,12 @@ const NewsLinkList = () => {
       
       <div className="mt-4 text-right">
         <a 
-          href="https://www.spaceflightnewsapi.net/" 
+          href="https://openai.com/blog" 
           className="text-matrix-primary hover:underline inline-flex items-center"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <span>Powered by Spaceflight News API</span>
+          <span>Latest AI News</span>
           <ArrowUpRight className="ml-1 w-4 h-4" />
         </a>
       </div>
