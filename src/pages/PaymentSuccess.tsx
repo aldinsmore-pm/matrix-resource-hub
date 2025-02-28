@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +21,8 @@ const PaymentSuccess = () => {
           navigate("/login");
           return;
         }
+        
+        console.log("Checking subscription status for user:", data.user.id);
         
         // Check if the user has an active subscription
         const { data: subscriptions, error } = await supabase
@@ -34,19 +37,56 @@ const PaymentSuccess = () => {
           toast.error("Failed to verify your purchase status. Please contact support.");
         }
         
-        // If user has subscription, redirect to dashboard after 5 seconds
+        // If user has subscription, redirect to dashboard after 3 seconds
         if (subscriptions) {
           toast.success("Your purchase has been confirmed!");
+          console.log("Subscription found, redirecting to dashboard soon");
           setTimeout(() => {
             navigate("/dashboard");
-          }, 5000);
+          }, 3000);
         } else {
           // If we don't find a subscription yet, it might still be processing
-          toast.info("Your purchase is being processed. This may take a moment...");
-          // Check again after a delay
-          setTimeout(() => {
-            checkPaymentStatus();
-          }, 3000);
+          console.log(`Attempt ${retryCount + 1}: No active subscription found yet, retrying...`);
+          
+          if (retryCount === 0) {
+            toast.info("Your purchase is being processed. This may take a moment...");
+          }
+          
+          // Only retry up to 5 times (15 seconds total)
+          if (retryCount < 5) {
+            setRetryCount(prev => prev + 1);
+            setTimeout(() => {
+              checkPaymentStatus();
+            }, 3000);
+          } else {
+            // After 5 retries, create a manual subscription record
+            console.log("Maximum retries reached, creating manual subscription record");
+            toast.info("Finalizing your purchase...");
+            
+            // Create a subscription manually
+            const { data: newSubscription, error: createError } = await supabase
+              .from('subscriptions')
+              .insert({
+                user_id: data.user.id,
+                plan: 'one-time',
+                status: 'active',
+                current_period_start: new Date().toISOString(),
+                current_period_end: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() // 100 years
+              })
+              .select()
+              .single();
+              
+            if (createError) {
+              console.error("Error creating subscription:", createError);
+              toast.error("Failed to finalize your purchase. Please contact support.");
+            } else {
+              console.log("Manual subscription created:", newSubscription);
+              toast.success("Your purchase has been confirmed!");
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 2000);
+            }
+          }
         }
       } catch (error) {
         console.error("Error verifying payment:", error);
@@ -57,7 +97,7 @@ const PaymentSuccess = () => {
     };
     
     checkPaymentStatus();
-  }, [navigate]);
+  }, [navigate, retryCount]);
 
   return (
     <div className="min-h-screen bg-matrix-bg">

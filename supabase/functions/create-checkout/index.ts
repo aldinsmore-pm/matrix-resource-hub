@@ -43,13 +43,13 @@ serve(async (req) => {
       );
     }
 
-    // Use the updated product ID and price ID
-    const PRODUCT_ID = "prod_RrL1RLRnascFV8"; // Updated product ID
-    const PRICE_ID = "price_1QxcL1DHuNeXQXoROL8sA5MW"; // Updated price ID
+    // Use the provided product ID and price ID
+    const PRICE_ID = "price_1QxcL1DHuNeXQXoROL8sA5MW"; // Correct price ID
     
     console.log(`Creating checkout session for user ${user.id}`);
     
     // Create Checkout session with the updated price
+    // Note: Removed the product_data[description] parameter that was causing the error
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
