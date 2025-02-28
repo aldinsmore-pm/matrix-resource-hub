@@ -130,7 +130,7 @@ const PublishedResources = () => {
       const line = lines[i];
 
       // Handle code blocks
-      if (line.includes('```')) {
+      if (line.trim().startsWith('```') || line.trim().endsWith('```')) {
         if (!inCodeBlock) {
           // Start of code block
           inCodeBlock = true;
@@ -139,20 +139,20 @@ const PublishedResources = () => {
           if (currentParagraph.trim()) {
             formattedElements.push(
               <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-                {currentParagraph}
+                {processBoldText(currentParagraph)}
               </p>
             );
             currentParagraph = '';
           }
           
           // Start collecting code
-          currentCodeBlock = line.replace('```', '');
+          currentCodeBlock = line.replace(/```/g, '');
         } else {
           // End of code block
           inCodeBlock = false;
           formattedElements.push(
             <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
-              <code>{currentCodeBlock.replace('```', '')}</code>
+              <code>{currentCodeBlock.replace(/```/g, '')}</code>
             </pre>
           );
           currentCodeBlock = '';
@@ -165,13 +165,34 @@ const PublishedResources = () => {
         continue;
       }
 
-      // Handle headings
+      // Handle headings with asterisks for bold formatting **Heading**
+      if (line.match(/^\*\*[\d]+\.\s.+\*\*$/) || line.match(/^\*\*.+\*\*$/)) {
+        // Heading with number like **1. Heading** or just **Heading**
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {processBoldText(currentParagraph)}
+            </p>
+          );
+          currentParagraph = '';
+        }
+        
+        const headingText = line.replace(/^\*\*|\*\*$/g, '');
+        formattedElements.push(
+          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-matrix-primary">
+            {headingText}
+          </h3>
+        );
+        continue;
+      }
+
+      // Handle traditional headings
       if (line.startsWith('# ')) {
         // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
             <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {currentParagraph}
+              {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
@@ -189,7 +210,7 @@ const PublishedResources = () => {
         if (currentParagraph.trim()) {
           formattedElements.push(
             <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {currentParagraph}
+              {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
@@ -207,7 +228,7 @@ const PublishedResources = () => {
         if (currentParagraph.trim()) {
           formattedElements.push(
             <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {currentParagraph}
+              {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
@@ -221,14 +242,14 @@ const PublishedResources = () => {
       }
 
       // Handle unordered lists
-      if (line.startsWith('- ')) {
+      if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
         // If we're not already in a list, start a new one
         if (!inList) {
           // Finish any current paragraph
           if (currentParagraph.trim()) {
             formattedElements.push(
               <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-                {currentParagraph}
+                {processBoldText(currentParagraph)}
               </p>
             );
             currentParagraph = '';
@@ -238,12 +259,19 @@ const PublishedResources = () => {
           listItems = [];
         }
         
-        // Add this item to the list
-        listItems.push(line.substring(2));
+        // Remove the bullet character and trim
+        const bulletText = line.trim().startsWith('- ') 
+          ? line.trim().substring(2) 
+          : line.trim().substring(2);
+          
+        // Add this item to the list with proper formatting for any bold text within it
+        listItems.push(processBoldText(bulletText));
         
         // If this is the last line or the next line is not a list item, end the list
         if (i === lines.length - 1 || 
-            !(lines[i+1].startsWith('- ') || lines[i+1].startsWith('  '))) {
+            !(lines[i+1].trim().startsWith('- ') || 
+              lines[i+1].trim().startsWith('• ') || 
+              lines[i+1].startsWith('  '))) {
           formattedElements.push(
             <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3">
               {listItems.map((item, idx) => (
@@ -266,7 +294,7 @@ const PublishedResources = () => {
           if (currentParagraph.trim()) {
             formattedElements.push(
               <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-                {currentParagraph}
+                {processBoldText(currentParagraph)}
               </p>
             );
             currentParagraph = '';
@@ -277,7 +305,7 @@ const PublishedResources = () => {
         }
         
         // Add this item to the list, removing the number and period
-        listItems.push(line.replace(/^\d+\.\s/, ''));
+        listItems.push(processBoldText(line.replace(/^\d+\.\s/, '')));
         
         // If this is the last line or the next line is not a list item, end the list
         if (i === lines.length - 1 || 
@@ -296,17 +324,24 @@ const PublishedResources = () => {
         continue;
       }
 
-      // Handle bold text
-      const processBoldText = (text: string) => {
-        // Find all **text** patterns and replace with <strong> tags
-        const parts = text.split(/(\*\*[^*]+\*\*)/g);
-        return parts.map((part, index) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
-          }
-          return part;
-        });
-      };
+      // Handle special block quotes (like the example prompt with >)
+      if (line.startsWith('> ')) {
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {processBoldText(currentParagraph)}
+            </p>
+          );
+          currentParagraph = '';
+        }
+        
+        formattedElements.push(
+          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-matrix-primary pl-4 py-1 my-4 italic text-gray-300">
+            {processBoldText(line.substring(2))}
+          </blockquote>
+        );
+        continue;
+      }
 
       // Handle empty lines (paragraph breaks)
       if (line.trim() === '') {
@@ -339,6 +374,24 @@ const PublishedResources = () => {
     }
 
     return formattedElements;
+  };
+
+  // Process bold text with ** markers
+  const processBoldText = (text: string) => {
+    if (!text) return text;
+    
+    // Split the text by bold markers
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    
+    if (parts.length === 1) return text;
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        // This is a bold text section
+        return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
   };
 
   const filteredResources = resources.filter(resource => {
