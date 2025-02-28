@@ -134,8 +134,8 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
     }
   };
 
-  const addTag = () => {
-    // Fix: Get the trimmed tag from the current input value
+  const handleAddTag = () => {
+    // Get the trimmed tag from the current input value
     const trimmedTag = tagInput.trim().toLowerCase();
     
     // Only add if the tag is not empty and not already in the list
@@ -153,7 +153,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault(); // Prevent form submission
-      addTag();
+      handleAddTag();
     }
   };
 
@@ -259,7 +259,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
             />
             <button
               type="button"
-              onClick={() => addTag()}
+              onClick={handleAddTag}
               className="px-3 py-2 bg-matrix-primary/20 text-matrix-primary border-y border-r border-matrix-border rounded-r hover:bg-matrix-primary/30"
             >
               Add
@@ -275,7 +275,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
                     type="button"
                     key={tag}
                     onClick={() => {
-                      // Fix: Directly add the tag when clicking on a popular tag
+                      // Directly add the tag when clicking on a popular tag
                       if (!tags.includes(tag)) {
                         setTags([...tags, tag]);
                       }
