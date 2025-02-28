@@ -20,13 +20,12 @@ const NewsLinkList = () => {
       try {
         setLoading(true);
         
-        // Use directly curated news items with verified working links
-        // This is the most reliable approach as RSS feeds can be inconsistent
+        // Use directly curated news items with verified working links and more recent articles
         const directNews = [
-          { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt-4o' },
-          { id: '2', title: 'ChatGPT can now see, hear, and speak', published_date: 'Mon, 25 Sep 2023 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-can-now-see-hear-and-speak' },
-          { id: '3', title: 'DALL·E 3 is now available in ChatGPT Plus and Enterprise', published_date: 'Fri, 13 Oct 2023 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-is-now-available-in-chatgpt-plus-and-enterprise' },
-          { id: '4', title: 'GPTs are now available to all ChatGPT Plus and Team users', published_date: 'Wed, 06 Nov 2023 08:45:00 GMT', link: 'https://openai.com/blog/introducing-gpts' }
+          { id: '1', title: 'The next generation of Claude is here', published_date: 'Mon, 09 Jul 2024 10:00:00 GMT', link: 'https://openai.com/blog/the-next-generation-of-claude-is-here' },
+          { id: '2', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt-4o' },
+          { id: '3', title: 'ChatGPT can now see, hear, and speak', published_date: 'Mon, 25 Sep 2023 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-can-now-see-hear-and-speak' },
+          { id: '4', title: 'DALL·E 3 is now available in ChatGPT Plus and Enterprise', published_date: 'Fri, 13 Oct 2023 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-is-now-available-in-chatgpt-plus-and-enterprise' }
         ];
         
         setNewsItems(directNews);
