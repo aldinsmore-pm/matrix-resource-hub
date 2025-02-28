@@ -54,7 +54,7 @@ const LoginForm = () => {
   return (
     <div className="card-container p-8 rounded-xl max-w-md w-full mx-auto">
       <h2 className="text-2xl font-bold mb-6 text-center text-white">
-        Sign In to <span className="text-matrix-primary">AI Unlocked</span>
+        Sign In to <span className="text-matrix-primary">Aire</span>
       </h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">

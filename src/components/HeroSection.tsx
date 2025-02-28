@@ -1,4 +1,3 @@
-
 import { ChevronDown, Database, Server, Code } from "lucide-react";
 
 const HeroSection = () => {
