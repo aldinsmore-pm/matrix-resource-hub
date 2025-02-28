@@ -12,7 +12,6 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
-import Subscription from "./pages/Subscription";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import { supabase, isSubscribed } from "./lib/supabase";
 
@@ -74,8 +73,8 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   if (!subscribed) {
-    console.log("No active subscription, redirecting to subscription page");
-    return <Navigate to="/subscription" replace />;
+    console.log("No active purchase, redirecting to payment page");
+    return <Navigate to="/payment" replace />;
   }
 
   return children;
@@ -100,7 +99,7 @@ const App = () => {
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/subscription" element={<Subscription />} />
+        <Route path="/payment" element={<Payment />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route
           path="/dashboard/*"

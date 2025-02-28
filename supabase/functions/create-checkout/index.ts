@@ -59,7 +59,7 @@ serve(async (req) => {
       ],
       mode: "payment",
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${returnUrl.split("/payment-success")[0]}/subscription`,
+      cancel_url: `${returnUrl.split("/payment-success")[0]}/payment`,
       client_reference_id: user.id,
       customer_email: user.email,
       metadata: {
