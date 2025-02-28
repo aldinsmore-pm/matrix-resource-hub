@@ -70,20 +70,20 @@ export async function getProfile(): Promise<Profile | null> {
 
 export async function getSubscription(): Promise<Subscription | null> {
   try {
-    console.log("Getting current user for subscription...");
+    console.log("Getting current user for purchase verification...");
     const { data: user, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
-      console.error("Error getting user for subscription:", userError);
+      console.error("Error getting user for purchase verification:", userError);
       throw userError;
     }
     
     if (!user.user) {
-      console.log("No user found for subscription");
+      console.log("No user found for purchase verification");
       return null;
     }
     
-    console.log("User found, fetching subscription...");
+    console.log("User found, checking purchase status...");
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
@@ -92,16 +92,16 @@ export async function getSubscription(): Promise<Subscription | null> {
       .single();
       
     if (error) {
-      // If no subscription found (PGRST116 is the "no rows returned" error), return null
+      // If no purchase found, return null
       if (error.code === 'PGRST116') {
-        console.log("No active subscription found");
+        console.log("No active purchase found");
         return null;
       }
-      console.error("Error fetching subscription:", error);
+      console.error("Error checking purchase status:", error);
       throw error;
     }
     
-    console.log("Subscription fetched successfully");
+    console.log("Purchase verification successful");
     return data;
   } catch (error) {
     console.error("getSubscription error:", error);
@@ -112,29 +112,29 @@ export async function getSubscription(): Promise<Subscription | null> {
 
 export async function isSubscribed(): Promise<boolean> {
   try {
-    console.log("Checking if user is subscribed...");
+    console.log("Checking if user has purchased...");
     const { data: user, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
-      console.error("Error getting user for subscription check:", userError);
+      console.error("Error getting user for purchase check:", userError);
       throw userError;
     }
     
     if (!user.user) {
-      console.log("No user found for subscription check");
+      console.log("No user found for purchase check");
       return false;
     }
     
-    console.log("User found, checking subscription status...");
+    console.log("User found, checking purchase status...");
     const { data, error } = await supabase
       .rpc('is_subscribed', { user_uuid: user.user.id });
       
     if (error) {
-      console.error("Error checking subscription status:", error);
+      console.error("Error checking purchase status:", error);
       throw error;
     }
     
-    console.log("Subscription status:", data ? "Active" : "Inactive");
+    console.log("Purchase status:", data ? "Active" : "Inactive");
     return data || false;
   } catch (error) {
     console.error("isSubscribed error:", error);
@@ -143,14 +143,14 @@ export async function isSubscribed(): Promise<boolean> {
   }
 }
 
-export async function createSubscription(plan: string, durationDays: number = 30): Promise<Subscription | null> {
+export async function createPurchase(plan: string): Promise<Subscription | null> {
   const { data: user } = await supabase.auth.getUser();
   
   if (!user.user) return null;
   
-  // Calculate end date based on duration
+  // Set end date to never expire (far future date)
   const endDate = new Date();
-  endDate.setDate(endDate.getDate() + durationDays);
+  endDate.setFullYear(endDate.getFullYear() + 100); // 100 years in the future
   
   const { data, error } = await supabase
     .from('subscriptions')
@@ -164,7 +164,7 @@ export async function createSubscription(plan: string, durationDays: number = 30
     .single();
   
   if (error) {
-    console.error('Error creating subscription:', error);
+    console.error('Error creating purchase record:', error);
     return null;
   }
   

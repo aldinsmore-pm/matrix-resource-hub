@@ -22,7 +22,7 @@ const Subscription = () => {
           return;
         }
         
-        // Check if user already has an active subscription
+        // Check if user already has purchased access
         const hasSubscription = await isSubscribed();
         
         if (hasSubscription) {
