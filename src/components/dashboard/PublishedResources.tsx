@@ -138,7 +138,7 @@ const PublishedResources = () => {
           // If there's any current paragraph text, add it
           if (currentParagraph.trim()) {
             formattedElements.push(
-              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
                 {processBoldText(currentParagraph)}
               </p>
             );
@@ -151,7 +151,7 @@ const PublishedResources = () => {
           // End of code block
           inCodeBlock = false;
           formattedElements.push(
-            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
+            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50 pipboy-text">
               <code>{currentCodeBlock.replace(/```/g, '')}</code>
             </pre>
           );
@@ -170,7 +170,7 @@ const PublishedResources = () => {
         // Heading with number like **1. Heading** or just **Heading**
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
               {processBoldText(currentParagraph)}
             </p>
           );
@@ -179,7 +179,7 @@ const PublishedResources = () => {
         
         const headingText = line.replace(/^\*\*|\*\*$/g, '');
         formattedElements.push(
-          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-matrix-primary">
+          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-matrix-primary pipboy-text">
             {headingText}
           </h3>
         );
@@ -191,14 +191,14 @@ const PublishedResources = () => {
         // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
               {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary">
+          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary pipboy-text">
             {line.substring(2)}
           </h2>
         );
@@ -209,14 +209,14 @@ const PublishedResources = () => {
         // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
               {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary/90">
+          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary/90 pipboy-text">
             {line.substring(3)}
           </h3>
         );
@@ -227,14 +227,14 @@ const PublishedResources = () => {
         // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
               {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary/80">
+          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary/80 pipboy-text">
             {line.substring(4)}
           </h4>
         );
@@ -248,7 +248,7 @@ const PublishedResources = () => {
           // Finish any current paragraph
           if (currentParagraph.trim()) {
             formattedElements.push(
-              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
                 {processBoldText(currentParagraph)}
               </p>
             );
@@ -275,7 +275,7 @@ const PublishedResources = () => {
           formattedElements.push(
             <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3">
               {listItems.map((item, idx) => (
-                <li key={idx} className="text-gray-300">{item}</li>
+                <li key={idx} className="text-gray-300 pipboy-text">{item}</li>
               ))}
             </ul>
           );
@@ -293,7 +293,7 @@ const PublishedResources = () => {
           // Finish any current paragraph
           if (currentParagraph.trim()) {
             formattedElements.push(
-              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
                 {processBoldText(currentParagraph)}
               </p>
             );
@@ -313,7 +313,7 @@ const PublishedResources = () => {
           formattedElements.push(
             <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3">
               {listItems.map((item, idx) => (
-                <li key={idx} className="text-gray-300">{item}</li>
+                <li key={idx} className="text-gray-300 pipboy-text">{item}</li>
               ))}
             </ol>
           );
@@ -328,7 +328,7 @@ const PublishedResources = () => {
       if (line.startsWith('> ')) {
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
               {processBoldText(currentParagraph)}
             </p>
           );
@@ -336,7 +336,7 @@ const PublishedResources = () => {
         }
         
         formattedElements.push(
-          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-matrix-primary pl-4 py-1 my-4 italic text-gray-300">
+          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-matrix-primary pl-4 py-1 my-4 italic text-gray-300 pipboy-text">
             {processBoldText(line.substring(2))}
           </blockquote>
         );
@@ -347,7 +347,7 @@ const PublishedResources = () => {
       if (line.trim() === '') {
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
               {processBoldText(currentParagraph)}
             </p>
           );
@@ -366,7 +366,7 @@ const PublishedResources = () => {
       // If this is the last line, add the paragraph
       if (i === lines.length - 1 && currentParagraph.trim()) {
         formattedElements.push(
-          <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+          <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
             {processBoldText(currentParagraph)}
           </p>
         );
@@ -388,7 +388,7 @@ const PublishedResources = () => {
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         // This is a bold text section
-        return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+        return <strong key={index} className="font-bold text-matrix-primary pipboy-text">{part.slice(2, -2)}</strong>;
       }
       return part;
     });
@@ -468,12 +468,12 @@ const PublishedResources = () => {
                       : "hover:bg-matrix-muted border border-transparent"
                   }`}
                 >
-                  <div className="font-medium">{resource.title}</div>
+                  <div className="font-medium pipboy-text">{resource.title}</div>
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded">
+                    <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded pipboy-text">
                       {resource.category}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 pipboy-text">
                       {formatDate(resource.created_at)}
                     </span>
                   </div>
@@ -482,7 +482,7 @@ const PublishedResources = () => {
                       {resource.tags.map(tag => (
                         <span 
                           key={tag} 
-                          className="text-xs px-1.5 py-0.5 bg-matrix-primary/10 text-matrix-primary/80 rounded-full"
+                          className="text-xs px-1.5 py-0.5 bg-matrix-primary/10 text-matrix-primary/80 rounded-full pipboy-text"
                         >
                           {tag}
                         </span>
@@ -499,14 +499,14 @@ const PublishedResources = () => {
               <>
                 {resources.find(r => r.id === selectedResource) && (
                   <>
-                    <h4 className="font-bold text-xl mb-2">
+                    <h4 className="font-bold text-xl mb-2 pipboy-text">
                       {resources.find(r => r.id === selectedResource)?.title}
                     </h4>
                     <div className="flex items-center mb-2">
-                      <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded">
+                      <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded pipboy-text">
                         {resources.find(r => r.id === selectedResource)?.category}
                       </span>
-                      <span className="text-xs text-gray-500 ml-2">
+                      <span className="text-xs text-gray-500 ml-2 pipboy-text">
                         {formatDate(resources.find(r => r.id === selectedResource)?.created_at || "")}
                       </span>
                     </div>
@@ -518,7 +518,7 @@ const PublishedResources = () => {
                         {resources.find(r => r.id === selectedResource)?.tags.map(tag => (
                           <span 
                             key={tag} 
-                            className="text-xs px-2 py-0.5 bg-matrix-primary/10 text-matrix-primary/80 rounded-full"
+                            className="text-xs px-2 py-0.5 bg-matrix-primary/10 text-matrix-primary/80 rounded-full pipboy-text"
                           >
                             {tag}
                           </span>
@@ -534,7 +534,7 @@ const PublishedResources = () => {
               </>
             ) : (
               <div className="h-full flex items-center justify-center text-gray-400">
-                <p>Select a resource to view its content</p>
+                <p className="pipboy-text">Select a resource to view its content</p>
               </div>
             )}
           </div>
