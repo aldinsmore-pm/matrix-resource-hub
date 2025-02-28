@@ -90,6 +90,7 @@ export type Database = {
           id: string
           image_url: string | null
           published: boolean
+          tags: string[] | null
           title: string
           updated_at: string
         }
@@ -102,6 +103,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           published?: boolean
+          tags?: string[] | null
           title: string
           updated_at?: string
         }
@@ -114,6 +116,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           published?: boolean
+          tags?: string[] | null
           title?: string
           updated_at?: string
         }
@@ -165,6 +168,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_top_tags: {
+        Args: {
+          limit_count?: number
+        }
+        Returns: {
+          tag: string
+          count: number
+        }[]
+      }
       is_subscribed: {
         Args: {
           user_uuid: string
