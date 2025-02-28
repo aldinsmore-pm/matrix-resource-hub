@@ -121,6 +121,17 @@ const ResourcesLinkList = () => {
     navigate('/dashboard', { state: { section: 'resources' } });
   };
 
+  const handleResourceClick = (resourceId: string) => {
+    console.log("Navigating to resource:", resourceId);
+    navigate('/dashboard', { 
+      state: { 
+        section: 'resources',
+        view: 'detail',
+        resourceId: resourceId 
+      } 
+    });
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -185,7 +196,7 @@ const ResourcesLinkList = () => {
           {resources.map(resource => (
             <div 
               key={resource.id}
-              onClick={() => navigate(`/dashboard`, { state: { section: 'resources', resourceId: resource.id }})}
+              onClick={() => handleResourceClick(resource.id)}
               className="p-2 hover:bg-matrix-muted/20 rounded cursor-pointer transition-colors"
             >
               <div className="font-medium text-white text-sm pipboy-text">{resource.title}</div>

@@ -1,46 +1,94 @@
 
-import { useState } from "react";
-import { Newspaper, Settings } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import ResourcesList from "./ResourcesList";
+import ResourceForm from "./ResourceForm";
 import PublishedResources from "./PublishedResources";
-import ResourcesContent from "./ResourcesContent";
+import { toast } from "sonner";
 
-const ResourcesSection = () => {
-  const [mode, setMode] = useState<"view" | "manage">("view");
+interface ResourcesSectionProps {
+  initialResourceId?: string;
+  initialView?: string;
+}
+
+const ResourcesSection = ({ initialResourceId, initialView }: ResourcesSectionProps) => {
+  const [activeTab, setActiveTab] = useState("published");
+  const [editMode, setEditMode] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
+  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Handle initial resource and view if provided
+    if (initialResourceId) {
+      setSelectedResourceId(initialResourceId);
+      
+      if (initialView === "detail") {
+        setActiveTab("published");
+        setEditMode(false);
+        setCreateMode(false);
+      } else if (initialView === "edit") {
+        setActiveTab("my-resources");
+        setEditMode(true);
+        setCreateMode(false);
+      }
+    }
+  }, [initialResourceId, initialView]);
+
+  const handleSaveComplete = () => {
+    setEditMode(false);
+    setCreateMode(false);
+    toast.success("Resource saved successfully!");
+  };
+
+  const handleCancel = () => {
+    setEditMode(false);
+    setCreateMode(false);
+    setSelectedResourceId(null);
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold pipboy-text">Resources</h3>
-        <div className="flex bg-matrix-bg rounded-lg overflow-hidden">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold pipboy-text">Resources</h2>
+        {!editMode && !createMode && (
           <button
-            onClick={() => setMode("view")}
-            className={`px-4 py-2 flex items-center text-sm ${
-              mode === "view"
-                ? "bg-matrix-primary text-black"
-                : "text-gray-400 hover:text-white"
-            }`}
+            onClick={() => {
+              setCreateMode(true);
+              setSelectedResourceId(null);
+            }}
+            className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-colors"
           >
-            <Newspaper className="w-4 h-4 mr-2" />
-            <span className="pipboy-text">View Resources</span>
+            Create New Resource
           </button>
-          <button
-            onClick={() => setMode("manage")}
-            className={`px-4 py-2 flex items-center text-sm ${
-              mode === "manage"
-                ? "bg-matrix-primary text-black"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            <span className="pipboy-text">Manage Content</span>
-          </button>
-        </div>
+        )}
       </div>
-      
-      {mode === "view" ? (
-        <PublishedResources />
+
+      {createMode ? (
+        <ResourceForm onComplete={handleSaveComplete} onCancel={handleCancel} />
+      ) : editMode ? (
+        <ResourceForm resourceId={selectedResourceId || undefined} onComplete={handleSaveComplete} onCancel={handleCancel} />
       ) : (
-        <ResourcesContent />
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-matrix-bg-alt grid grid-cols-2 w-full max-w-md">
+            <TabsTrigger value="published">Published Resources</TabsTrigger>
+            <TabsTrigger value="my-resources">My Resources</TabsTrigger>
+          </TabsList>
+          
+          <div className="mt-6">
+            <TabsContent value="published" className="mt-0">
+              <PublishedResources />
+            </TabsContent>
+            
+            <TabsContent value="my-resources" className="mt-0">
+              <ResourcesList 
+                onEditResource={(id) => {
+                  setSelectedResourceId(id);
+                  setEditMode(true);
+                }}
+              />
+            </TabsContent>
+          </div>
+        </Tabs>
       )}
     </div>
   );

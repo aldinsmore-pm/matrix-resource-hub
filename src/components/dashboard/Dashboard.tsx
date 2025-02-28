@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut, Menu, ChevronLeft, Link } from "lucide-react";
 import { supabase, getProfile, getSubscription } from "../../lib/supabase";
 import ResourcesSection from "./ResourcesSection";
@@ -33,6 +33,12 @@ interface Resource {
   published: boolean;
 }
 
+interface LocationState {
+  section?: string;
+  view?: string;
+  resourceId?: string;
+}
+
 const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -42,9 +48,11 @@ const Dashboard = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Animation states
   const [animationComplete, setAnimationComplete] = useState(false);
+  
   useEffect(() => {
     // Set animation flag after a delay to create game UI feel
     const timer = setTimeout(() => {
@@ -52,6 +60,7 @@ const Dashboard = () => {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+  
   useEffect(() => {
     async function loadUserData() {
       try {
@@ -99,7 +108,16 @@ const Dashboard = () => {
       }
     }
     loadUserData();
-  }, [navigate]);
+
+    // Check if we need to set a section from location state
+    const state = location.state as LocationState | null;
+    if (state && state.section) {
+      setActiveSection(state.section);
+      // Clear the state after using it
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [navigate, location.pathname]);
+  
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -110,15 +128,18 @@ const Dashboard = () => {
       toast.error("Failed to sign out");
     }
   };
+  
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+  
   if (loading) {
     return <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
         <div className="mb-4 text-matrix-primary text-xl">Initializing...</div>
         <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
       </div>;
   }
+  
   if (loadError) {
     return <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
         <div className="text-xl mb-4 text-red-500">Error loading dashboard</div>
@@ -128,6 +149,7 @@ const Dashboard = () => {
         </button>
       </div>;
   }
+  
   if (!profile) {
     return <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
         <div className="text-xl mb-4">User not found.</div>
@@ -136,6 +158,12 @@ const Dashboard = () => {
         </button>
       </div>;
   }
+
+  // Get resource ID from location state
+  const state = location.state as LocationState | null;
+  const resourceId = state?.resourceId;
+  const viewMode = state?.view;
+  
   return <div className="min-h-screen bg-matrix-bg flex">
       {/* Game-style sidebar - animation delay */}
       <div className={`bg-matrix-bg-alt/70 backdrop-blur-md border-r border-matrix-border p-4 transition-all duration-500 ${sidebarOpen ? 'w-64' : 'w-16'} fixed h-full z-10 ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-x-10'}`} style={{
@@ -232,7 +260,15 @@ const Dashboard = () => {
               }}>
                     <h5 className="text-base font-medium mb-3 pipboy-text">Recent Resources</h5>
                     {recentResources.length > 0 ? <div className="divide-y divide-matrix-border">
-                        {recentResources.slice(0, 3).map((resource, index) => <ResourceItem key={resource.id} title={resource.title} category={resource.category} date={formatDate(resource.created_at)} published={resource.published} onClick={() => navigate(`/dashboard/resources/${resource.id}`)} delay={index * 100} animationComplete={animationComplete} />)}
+                        {recentResources.slice(0, 3).map((resource, index) => <ResourceItem key={resource.id} title={resource.title} category={resource.category} date={formatDate(resource.created_at)} published={resource.published} onClick={() => {
+                          navigate('/dashboard', { 
+                            state: { 
+                              section: 'resources',
+                              view: 'detail',
+                              resourceId: resource.id 
+                            } 
+                          });
+                        }} delay={index * 100} animationComplete={animationComplete} />)}
                       </div> : <div className="text-center py-6 text-gray-400 pipboy-text">
                         <p>No resources found.</p>
                       </div>}
@@ -254,7 +290,7 @@ const Dashboard = () => {
           
           {activeSection === "resources" && <div className={`transition-all duration-500 
               ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
-              <ResourcesSection />
+              <ResourcesSection initialResourceId={resourceId} initialView={viewMode} />
             </div>}
             
           {activeSection === "links" && <div className={`transition-all duration-500 
@@ -375,10 +411,14 @@ const ResourceItem = ({
   delay?: number;
   animationComplete: boolean;
 }) => {
-  return <div className={`py-3 transition-all duration-700 hover:bg-matrix-muted/20 px-2 rounded-md 
-      ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-3'}`} style={{
-    transitionDelay: `${delay + 500}ms`
-  }}>
+  return <div 
+      onClick={onClick}
+      className={`py-3 transition-all duration-700 hover:bg-matrix-muted/20 px-2 rounded-md cursor-pointer
+      ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-3'}`} 
+      style={{
+        transitionDelay: `${delay + 500}ms`
+      }}
+    >
       <div className="flex justify-between">
         <div>
           <h5 className="font-medium text-white pipboy-text">{title}</h5>
@@ -388,7 +428,7 @@ const ResourceItem = ({
             {published ? <span className="text-xs px-2 py-0.5 bg-green-900/30 text-green-400 rounded ml-2 pipboy-text">Published</span> : <span className="text-xs px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded ml-2 pipboy-text">Draft</span>}
           </div>
         </div>
-        <button onClick={onClick} className="text-matrix-primary hover:underline text-sm transition-all duration-300 hover:text-matrix-primary/80 pipboy-text">
+        <button className="text-matrix-primary hover:underline text-sm transition-all duration-300 hover:text-matrix-primary/80 pipboy-text">
           View
         </button>
       </div>
