@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://blnaxvnuzikfelwcwzft.supabase.co';
@@ -141,6 +140,35 @@ export async function isSubscribed(): Promise<boolean> {
     // Return false instead of throwing to handle the case gracefully
     return false;
   }
+}
+
+export async function createSubscription(plan: string, durationDays: number = 365): Promise<Subscription | null> {
+  const { data: user } = await supabase.auth.getUser();
+  
+  if (!user.user) return null;
+  
+  // Set end date based on duration parameter
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + durationDays);
+  
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .insert({
+      user_id: user.user.id,
+      plan: plan,
+      status: 'active',
+      current_period_start: new Date().toISOString(),
+      current_period_end: endDate.toISOString()
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error creating subscription record:', error);
+    return null;
+  }
+  
+  return data;
 }
 
 export async function createPurchase(plan: string): Promise<Subscription | null> {
