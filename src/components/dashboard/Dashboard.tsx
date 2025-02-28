@@ -7,6 +7,7 @@ import ResourcesSection from "./ResourcesSection";
 import ResourcesLinkList from "./ResourcesLinkList";
 import NewsLinkList from "./NewsLinkList";
 import LinksLinkList from "./LinksLinkList";
+import LinksSection from "./LinksSection";
 import { toast } from "sonner";
 
 interface Profile {
@@ -243,7 +244,7 @@ const Dashboard = () => {
                     <h5 className="text-base font-medium mb-3 pipboy-text">Quick Actions</h5>
                     <div className="space-y-3">
                       <QuickActionButton icon={<Book className="w-4 h-4 mr-2" />} label="Create New Resource" onClick={() => setActiveSection("resources")} />
-                      <QuickActionButton icon={<FileText className="w-4 h-4 mr-2" />} label="Explore AI Tools" onClick={() => setActiveSection("tools")} />
+                      <QuickActionButton icon={<Link className="w-4 h-4 mr-2" />} label="Manage Links" onClick={() => setActiveSection("links")} />
                       <QuickActionButton icon={<Settings className="w-4 h-4 mr-2" />} label="Account Settings" onClick={() => setActiveSection("settings")} />
                     </div>
                   </div>
@@ -258,100 +259,7 @@ const Dashboard = () => {
             
           {activeSection === "links" && <div className={`transition-all duration-500 
               ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold mb-4 pipboy-text">AI Links Collection</h3>
-                <p className="text-gray-400 mb-6 pipboy-text">Curated links to essential AI resources, documentation, and tools.</p>
-                
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-6">
-                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
-                      <h4 className="text-lg font-semibold mb-4 pipboy-text">Development Resources</h4>
-                      <div className="space-y-3">
-                        <LinkItem 
-                          title="TensorFlow Documentation" 
-                          url="https://www.tensorflow.org/api_docs" 
-                          description="Official docs for TensorFlow machine learning framework"
-                        />
-                        <LinkItem 
-                          title="PyTorch Tutorials" 
-                          url="https://pytorch.org/tutorials/" 
-                          description="Learn how to use PyTorch for deep learning models"
-                        />
-                        <LinkItem 
-                          title="Hugging Face Transformers" 
-                          url="https://huggingface.co/docs/transformers/" 
-                          description="State-of-the-art NLP models documentation"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
-                      <h4 className="text-lg font-semibold mb-4 pipboy-text">Model Repositories</h4>
-                      <div className="space-y-3">
-                        <LinkItem 
-                          title="Hugging Face Models" 
-                          url="https://huggingface.co/models" 
-                          description="Browse thousands of pre-trained models"
-                        />
-                        <LinkItem 
-                          title="TensorFlow Hub" 
-                          url="https://tfhub.dev/" 
-                          description="Repository of trained machine learning models"
-                        />
-                        <LinkItem 
-                          title="ONNX Model Zoo" 
-                          url="https://github.com/onnx/models" 
-                          description="Collection of pre-trained models in ONNX format"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
-                      <h4 className="text-lg font-semibold mb-4 pipboy-text">Learning Resources</h4>
-                      <div className="space-y-3">
-                        <LinkItem 
-                          title="arXiv AI Papers" 
-                          url="https://arxiv.org/list/cs.AI/recent" 
-                          description="Latest research papers on artificial intelligence"
-                        />
-                        <LinkItem 
-                          title="Google AI Blog" 
-                          url="https://ai.googleblog.com/" 
-                          description="Research and perspectives from Google AI team"
-                        />
-                        <LinkItem 
-                          title="DeepMind Research" 
-                          url="https://deepmind.com/research" 
-                          description="Breakthrough research in artificial intelligence"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
-                      <h4 className="text-lg font-semibold mb-4 pipboy-text">API Documentation</h4>
-                      <div className="space-y-3">
-                        <LinkItem 
-                          title="OpenAI API" 
-                          url="https://platform.openai.com/docs/api-reference" 
-                          description="Documentation for GPT and other OpenAI API models"
-                        />
-                        <LinkItem 
-                          title="Google Cloud AI" 
-                          url="https://cloud.google.com/ai" 
-                          description="AI and machine learning products on Google Cloud"
-                        />
-                        <LinkItem 
-                          title="Azure Cognitive Services" 
-                          url="https://learn.microsoft.com/en-us/azure/cognitive-services/" 
-                          description="Microsoft's AI services documentation"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <LinksSection />
             </div>}
           
           {activeSection !== "overview" && activeSection !== "resources" && activeSection !== "links" && <div className={`min-h-[400px] flex items-center justify-center transition-all duration-500
