@@ -13,9 +13,22 @@ const DashboardPage = () => {
 
   useEffect(() => {
     // Check authentication status to handle any issues
+    let authTimeout: NodeJS.Timeout;
+    let isMounted = true;
+
     async function checkAuth() {
       try {
         setAuthChecking(true);
+        
+        // Set a timeout for this specific auth check
+        authTimeout = setTimeout(() => {
+          if (isMounted) {
+            console.error("DashboardPage: Authentication check timed out");
+            toast.error("Authentication check timed out, redirecting to login...");
+            navigate("/login");
+          }
+        }, 5000); // 5 second timeout
+        
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -31,8 +44,13 @@ const DashboardPage = () => {
           return;
         }
         
-        // Session is valid
-        setAuthChecking(false);
+        // Clear timeout once we have a result
+        clearTimeout(authTimeout);
+        
+        // Session is valid, proceed with dashboard
+        if (isMounted) {
+          setAuthChecking(false);
+        }
       } catch (error) {
         console.error("Error in auth check:", error);
         toast.error("Authentication error. Redirecting to login...");
@@ -42,12 +60,35 @@ const DashboardPage = () => {
     
     checkAuth();
     
+    // Set up auth listener to handle session changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (isMounted) {
+        clearTimeout(authTimeout);
+        
+        console.log("Dashboard auth state changed:", event);
+        
+        if (event === 'SIGNED_OUT' || !session) {
+          navigate("/login");
+          return;
+        }
+        
+        setAuthChecking(false);
+      }
+    });
+    
     // Animation delay for the game UI feel - only if auth passes
-    const timer = setTimeout(() => {
-      setLoaded(true);
+    const animationTimer = setTimeout(() => {
+      if (isMounted) {
+        setLoaded(true);
+      }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(authTimeout);
+      clearTimeout(animationTimer);
+      authListener.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   // Don't render dashboard until auth check is complete

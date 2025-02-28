@@ -33,7 +33,7 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
       try {
         console.log("ProtectedRoute: Checking authentication...");
         
-        // Force a refresh of the session
+        // Directly check the session without refreshing first
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -52,7 +52,8 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
           return;
         }
         
-        // Check if user is authenticated
+        // Session exists, get the user
+        console.log("Session found, getting user...");
         const { data, error } = await supabase.auth.getUser();
         
         if (error) {
@@ -114,23 +115,28 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
             return;
           }
           
-          setUser(session?.user || null);
-          
-          if (session?.user && requireSubscription) {
-            try {
-              const subscribed = await isSubscribed();
-              if (isMounted) {
-                setHasSubscription(subscribed);
-                setLoading(false);
+          if (session) {
+            setUser(session.user || null);
+            
+            if (session.user && requireSubscription) {
+              try {
+                const subscribed = await isSubscribed();
+                if (isMounted) {
+                  setHasSubscription(subscribed);
+                  setLoading(false);
+                }
+              } catch (error) {
+                console.error("Error checking subscription on auth change:", error);
+                if (isMounted) {
+                  setHasSubscription(false);
+                  setLoading(false);
+                }
               }
-            } catch (error) {
-              console.error("Error checking subscription on auth change:", error);
-              if (isMounted) {
-                setHasSubscription(false);
-                setLoading(false);
-              }
+            } else {
+              setLoading(false);
             }
           } else {
+            setUser(null);
             setLoading(false);
           }
         }
