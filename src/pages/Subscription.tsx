@@ -9,6 +9,8 @@ import { supabase, isSubscribed } from "../lib/supabase";
 
 const Subscription = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -17,6 +19,23 @@ const Subscription = () => {
       try {
         // Check if user is authenticated
         const { data } = await supabase.auth.getUser();
+        
+        // Check for authentication errors in URL
+        const urlError = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
+        
+        if (urlError === 'access_denied' && errorDescription?.includes('Email link is invalid or has expired')) {
+          setError('Your email confirmation link has expired or is invalid.');
+          
+          // Try to get email from local storage or URL
+          const storedEmail = localStorage.getItem('lastSignupEmail');
+          if (storedEmail) {
+            setEmail(storedEmail);
+          }
+          
+          setLoading(false);
+          return;
+        }
         
         if (!data.user) {
           // If not logged in, redirect to login
@@ -113,8 +132,77 @@ const Subscription = () => {
     handleAuthRedirect();
   }, [navigate]);
 
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('A new confirmation email has been sent. Please check your inbox.');
+      // Store the email for future use
+      localStorage.setItem('lastSignupEmail', email);
+      
+    } catch (error: any) {
+      console.error('Error resending confirmation:', error);
+      toast.error(error.message || 'Failed to resend confirmation email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-matrix-bg">
+        <Navbar />
+        <div className="pt-24 container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto card-container rounded-xl p-8">
+            <h2 className="text-2xl font-bold mb-4 text-center text-white">Email Confirmation Error</h2>
+            <p className="text-gray-300 mb-6">{error}</p>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-1">Your Email Address</label>
+              <input
+                type="email"
+                value={email || ''}
+                onChange={(e) => setEmail(e.target.value)}
+                className="block w-full px-3 py-2 border border-matrix-border rounded-md bg-matrix-muted text-white focus:outline-none focus:ring-1 focus:ring-matrix-primary focus:border-matrix-primary"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <button
+              onClick={handleResendConfirmation}
+              disabled={loading}
+              className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-matrix-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-matrix-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Sending..." : "Resend Confirmation Email"}
+            </button>
+            
+            <div className="mt-4 text-center">
+              <a href="/login" className="text-matrix-primary hover:underline text-sm">
+                Back to Login
+              </a>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
   }
 
   return (
