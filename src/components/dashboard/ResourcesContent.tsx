@@ -45,116 +45,233 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
     }).format(date);
   };
 
-  // Function to format content with proper styling
+  // Format content with proper styling
   const formatContent = (content: string) => {
     if (!content) return null;
-    
-    // Split by double newlines to separate paragraphs
-    const paragraphs = content.split(/\n\n+/);
-    
-    return paragraphs.map((paragraph, index) => {
-      // For headings (lines that start with # or ##)
-      if (paragraph.startsWith('# ')) {
-        return (
-          <h2 key={index} className="text-xl font-bold my-4 text-matrix-primary">
-            {paragraph.replace('# ', '')}
+
+    // Process special formatting
+    const lines = content.split('\n');
+    const formattedElements = [];
+    let inCodeBlock = false;
+    let currentCodeBlock = '';
+    let currentParagraph = '';
+    let inList = false;
+    let listItems = [];
+    let listType: 'ordered' | 'unordered' | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Handle code blocks
+      if (line.includes('```')) {
+        if (!inCodeBlock) {
+          // Start of code block
+          inCodeBlock = true;
+          
+          // If there's any current paragraph text, add it
+          if (currentParagraph.trim()) {
+            formattedElements.push(
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+                {currentParagraph}
+              </p>
+            );
+            currentParagraph = '';
+          }
+          
+          // Start collecting code
+          currentCodeBlock = line.replace('```', '');
+        } else {
+          // End of code block
+          inCodeBlock = false;
+          formattedElements.push(
+            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
+              <code>{currentCodeBlock.replace('```', '')}</code>
+            </pre>
+          );
+          currentCodeBlock = '';
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        currentCodeBlock += line + '\n';
+        continue;
+      }
+
+      // Handle headings
+      if (line.startsWith('# ')) {
+        // Finish any current paragraph
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {currentParagraph}
+            </p>
+          );
+          currentParagraph = '';
+        }
+        formattedElements.push(
+          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary">
+            {line.substring(2)}
           </h2>
         );
-      } else if (paragraph.startsWith('## ')) {
-        return (
-          <h3 key={index} className="text-lg font-semibold my-3 text-matrix-primary/90">
-            {paragraph.replace('## ', '')}
+        continue;
+      }
+
+      if (line.startsWith('## ')) {
+        // Finish any current paragraph
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {currentParagraph}
+            </p>
+          );
+          currentParagraph = '';
+        }
+        formattedElements.push(
+          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary/90">
+            {line.substring(3)}
           </h3>
         );
-      } else if (paragraph.startsWith('### ')) {
-        return (
-          <h4 key={index} className="text-base font-medium my-2 text-matrix-primary/80">
-            {paragraph.replace('### ', '')}
+        continue;
+      }
+
+      if (line.startsWith('### ')) {
+        // Finish any current paragraph
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {currentParagraph}
+            </p>
+          );
+          currentParagraph = '';
+        }
+        formattedElements.push(
+          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary/80">
+            {line.substring(4)}
           </h4>
         );
+        continue;
       }
-      
-      // For lists
-      else if (paragraph.includes('\n- ')) {
-        const listItems = paragraph.split('\n- ');
-        const introText = listItems.shift();
+
+      // Handle unordered lists
+      if (line.startsWith('- ')) {
+        // If we're not already in a list, start a new one
+        if (!inList) {
+          // Finish any current paragraph
+          if (currentParagraph.trim()) {
+            formattedElements.push(
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+                {currentParagraph}
+              </p>
+            );
+            currentParagraph = '';
+          }
+          inList = true;
+          listType = 'unordered';
+          listItems = [];
+        }
         
-        return (
-          <div key={index} className="my-3">
-            {introText && introText !== '- ' && (
-              <p className="mb-2">{introText.replace('- ', '')}</p>
-            )}
-            <ul className="list-disc pl-5 space-y-1">
-              {listItems.map((item, i) => (
-                <li key={i} className="text-gray-300">{item}</li>
+        // Add this item to the list
+        listItems.push(line.substring(2));
+        
+        // If this is the last line or the next line is not a list item, end the list
+        if (i === lines.length - 1 || 
+            !(lines[i+1].startsWith('- ') || lines[i+1].startsWith('  '))) {
+          formattedElements.push(
+            <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3">
+              {listItems.map((item, idx) => (
+                <li key={idx} className="text-gray-300">{item}</li>
               ))}
             </ul>
-          </div>
-        );
-      }
-      
-      // For numbered lists
-      else if (paragraph.includes('\n1. ') || paragraph.match(/^\d+\.\s/)) {
-        const listItems = paragraph.split(/\n\d+\.\s/);
-        const introText = listItems.shift();
+          );
+          inList = false;
+          listItems = [];
+        }
         
-        return (
-          <div key={index} className="my-3">
-            {introText && !introText.match(/^\d+\.\s/) && (
-              <p className="mb-2">{introText}</p>
-            )}
-            <ol className="list-decimal pl-5 space-y-1">
-              {listItems.map((item, i) => (
-                <li key={i} className="text-gray-300">{item}</li>
+        continue;
+      }
+
+      // Handle ordered lists
+      if (/^\d+\.\s/.test(line)) {
+        // If we're not already in a list, start a new one
+        if (!inList) {
+          // Finish any current paragraph
+          if (currentParagraph.trim()) {
+            formattedElements.push(
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+                {currentParagraph}
+              </p>
+            );
+            currentParagraph = '';
+          }
+          inList = true;
+          listType = 'ordered';
+          listItems = [];
+        }
+        
+        // Add this item to the list, removing the number and period
+        listItems.push(line.replace(/^\d+\.\s/, ''));
+        
+        // If this is the last line or the next line is not a list item, end the list
+        if (i === lines.length - 1 || 
+            !(/^\d+\.\s/.test(lines[i+1]) || lines[i+1].startsWith('  '))) {
+          formattedElements.push(
+            <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3">
+              {listItems.map((item, idx) => (
+                <li key={idx} className="text-gray-300">{item}</li>
               ))}
             </ol>
-          </div>
-        );
+          );
+          inList = false;
+          listItems = [];
+        }
+        
+        continue;
       }
-      
-      // For code blocks
-      else if (paragraph.includes('```')) {
-        const parts = paragraph.split('```');
-        return (
-          <div key={index} className="my-4">
-            {parts.map((part, i) => {
-              if (i % 2 === 0) {
-                return part && <p key={`p-${i}`} className="mb-2">{part}</p>;
-              } else {
-                return (
-                  <pre key={`code-${i}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
-                    <code>{part}</code>
-                  </pre>
-                );
-              }
-            })}
-          </div>
-        );
+
+      // Handle bold text
+      const processBoldText = (text: string) => {
+        // Find all **text** patterns and replace with <strong> tags
+        const parts = text.split(/(\*\*[^*]+\*\*)/g);
+        return parts.map((part, index) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+          }
+          return part;
+        });
+      };
+
+      // Handle empty lines (paragraph breaks)
+      if (line.trim() === '') {
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {processBoldText(currentParagraph)}
+            </p>
+          );
+          currentParagraph = '';
+        }
+        continue;
       }
-      
-      // Handle single newlines within a paragraph (for line breaks)
-      else if (paragraph.includes('\n')) {
-        return (
-          <p key={index} className="my-3 text-gray-300">
-            {paragraph.split('\n').map((line, i) => (
-              <span key={i}>
-                {line}
-                {i < paragraph.split('\n').length - 1 && <br />}
-              </span>
-            ))}
+
+      // Regular text (part of a paragraph)
+      if (currentParagraph) {
+        currentParagraph += ' ' + line;
+      } else {
+        currentParagraph = line;
+      }
+
+      // If this is the last line, add the paragraph
+      if (i === lines.length - 1 && currentParagraph.trim()) {
+        formattedElements.push(
+          <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+            {processBoldText(currentParagraph)}
           </p>
         );
       }
-      
-      // Regular paragraphs
-      else {
-        return (
-          <p key={index} className="my-3 text-gray-300">
-            {paragraph}
-          </p>
-        );
-      }
-    });
+    }
+
+    return formattedElements;
   };
 
   if (loading) {
