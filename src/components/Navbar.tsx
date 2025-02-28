@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Menu, X, ChevronDown, User } from "lucide-react";
+import { Menu, X, ChevronDown, User, Link } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase, isSubscribed } from "../lib/supabase";
 
@@ -93,6 +93,7 @@ const Navbar = () => {
             <NavLink href="#resources">Resources</NavLink>
             <NavLink href="#news">News</NavLink>
             <NavLink href="#guides">Guides</NavLink>
+            <NavLink href="#links">Links</NavLink>
             
             <div className="relative group">
               <button className="flex items-center text-gray-300 hover:text-white transition-colors">
@@ -163,6 +164,7 @@ const Navbar = () => {
           <MobileNavLink href="#resources">Resources</MobileNavLink>
           <MobileNavLink href="#news">News</MobileNavLink>
           <MobileNavLink href="#guides">Guides</MobileNavLink>
+          <MobileNavLink href="#links">Links</MobileNavLink>
           
           <div className="border-t border-matrix-border pt-3">
             <MobileNavLink href="#enterprise-ai">Enterprise AI</MobileNavLink>

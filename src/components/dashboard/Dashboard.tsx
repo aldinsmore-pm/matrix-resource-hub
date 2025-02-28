@@ -1,11 +1,12 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Book, FileText, BarChart, FileCode, Settings, LogOut, Menu, ChevronLeft } from "lucide-react";
+import { Book, FileText, BarChart, FileCode, Settings, LogOut, Menu, ChevronLeft, Link } from "lucide-react";
 import { supabase, getProfile, getSubscription } from "../../lib/supabase";
 import ResourcesSection from "./ResourcesSection";
 import ResourcesLinkList from "./ResourcesLinkList";
 import NewsLinkList from "./NewsLinkList";
+import LinksLinkList from "./LinksLinkList";
 import { toast } from "sonner";
 
 interface Profile {
@@ -153,6 +154,7 @@ const Dashboard = () => {
           <SidebarItem icon={<Book className="w-5 h-5" />} label="Resources" active={activeSection === "resources"} onClick={() => setActiveSection("resources")} collapsed={!sidebarOpen} />
           <SidebarItem icon={<FileText className="w-5 h-5" />} label="Documents" active={activeSection === "documents"} onClick={() => setActiveSection("documents")} collapsed={!sidebarOpen} />
           <SidebarItem icon={<FileCode className="w-5 h-5" />} label="AI Tools" active={activeSection === "tools"} onClick={() => setActiveSection("tools")} collapsed={!sidebarOpen} />
+          <SidebarItem icon={<Link className="w-5 h-5" />} label="Links" active={activeSection === "links"} onClick={() => setActiveSection("links")} collapsed={!sidebarOpen} />
           <SidebarItem icon={<Settings className="w-5 h-5" />} label="Settings" active={activeSection === "settings"} onClick={() => setActiveSection("settings")} collapsed={!sidebarOpen} />
           
           <div className="pt-6 mt-6 border-t border-matrix-border">
@@ -208,6 +210,17 @@ const Dashboard = () => {
                 </div>
               </div>
               
+              {/* Links section */}
+              <div className={`transition-all duration-700 delay-450
+                ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
+                <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
+                transform hover:scale-[1.01] hover:border-matrix-primary/50" style={{
+                boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
+                }}>
+                  <LinksLinkList />
+                </div>
+              </div>
+              
               {/* Your content links - game UI style */}
               <div className={`mt-8 transition-all duration-700 delay-500
                 ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
@@ -242,8 +255,106 @@ const Dashboard = () => {
               ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
               <ResourcesSection />
             </div>}
+            
+          {activeSection === "links" && <div className={`transition-all duration-500 
+              ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold mb-4 pipboy-text">AI Links Collection</h3>
+                <p className="text-gray-400 mb-6 pipboy-text">Curated links to essential AI resources, documentation, and tools.</p>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-6">
+                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
+                      <h4 className="text-lg font-semibold mb-4 pipboy-text">Development Resources</h4>
+                      <div className="space-y-3">
+                        <LinkItem 
+                          title="TensorFlow Documentation" 
+                          url="https://www.tensorflow.org/api_docs" 
+                          description="Official docs for TensorFlow machine learning framework"
+                        />
+                        <LinkItem 
+                          title="PyTorch Tutorials" 
+                          url="https://pytorch.org/tutorials/" 
+                          description="Learn how to use PyTorch for deep learning models"
+                        />
+                        <LinkItem 
+                          title="Hugging Face Transformers" 
+                          url="https://huggingface.co/docs/transformers/" 
+                          description="State-of-the-art NLP models documentation"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
+                      <h4 className="text-lg font-semibold mb-4 pipboy-text">Model Repositories</h4>
+                      <div className="space-y-3">
+                        <LinkItem 
+                          title="Hugging Face Models" 
+                          url="https://huggingface.co/models" 
+                          description="Browse thousands of pre-trained models"
+                        />
+                        <LinkItem 
+                          title="TensorFlow Hub" 
+                          url="https://tfhub.dev/" 
+                          description="Repository of trained machine learning models"
+                        />
+                        <LinkItem 
+                          title="ONNX Model Zoo" 
+                          url="https://github.com/onnx/models" 
+                          description="Collection of pre-trained models in ONNX format"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
+                      <h4 className="text-lg font-semibold mb-4 pipboy-text">Learning Resources</h4>
+                      <div className="space-y-3">
+                        <LinkItem 
+                          title="arXiv AI Papers" 
+                          url="https://arxiv.org/list/cs.AI/recent" 
+                          description="Latest research papers on artificial intelligence"
+                        />
+                        <LinkItem 
+                          title="Google AI Blog" 
+                          url="https://ai.googleblog.com/" 
+                          description="Research and perspectives from Google AI team"
+                        />
+                        <LinkItem 
+                          title="DeepMind Research" 
+                          url="https://deepmind.com/research" 
+                          description="Breakthrough research in artificial intelligence"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30">
+                      <h4 className="text-lg font-semibold mb-4 pipboy-text">API Documentation</h4>
+                      <div className="space-y-3">
+                        <LinkItem 
+                          title="OpenAI API" 
+                          url="https://platform.openai.com/docs/api-reference" 
+                          description="Documentation for GPT and other OpenAI API models"
+                        />
+                        <LinkItem 
+                          title="Google Cloud AI" 
+                          url="https://cloud.google.com/ai" 
+                          description="AI and machine learning products on Google Cloud"
+                        />
+                        <LinkItem 
+                          title="Azure Cognitive Services" 
+                          url="https://learn.microsoft.com/en-us/azure/cognitive-services/" 
+                          description="Microsoft's AI services documentation"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>}
           
-          {activeSection !== "overview" && activeSection !== "resources" && <div className={`min-h-[400px] flex items-center justify-center transition-all duration-500
+          {activeSection !== "overview" && activeSection !== "resources" && activeSection !== "links" && <div className={`min-h-[400px] flex items-center justify-center transition-all duration-500
               ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
               <div className="text-center p-8 card-container rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30" style={{
             boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)'
@@ -276,6 +387,32 @@ const QuickActionButton = ({
       <span className="text-matrix-primary">{icon}</span>
       <span className="pipboy-text text-gray-300 group-hover:text-white">{label}</span>
     </button>
+  );
+};
+
+// Link Item Component for Links section
+const LinkItem = ({
+  title,
+  url,
+  description
+}: {
+  title: string;
+  url: string;
+  description: string;
+}) => {
+  return (
+    <a 
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block p-3 rounded-md border border-matrix-border/40 hover:bg-matrix-muted/20 hover:border-matrix-primary/40 transition-all duration-300"
+    >
+      <h5 className="font-medium text-white pipboy-text">{title}</h5>
+      <p className="text-xs text-gray-400 mt-1 pipboy-text">{description}</p>
+      <div className="flex justify-end mt-2">
+        <span className="text-xs inline-block text-matrix-primary pipboy-text">Visit →</span>
+      </div>
+    </a>
   );
 };
 

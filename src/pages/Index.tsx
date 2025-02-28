@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import Navbar from "../components/Navbar";
 import HeroSection from "../components/HeroSection";
@@ -190,6 +189,37 @@ const Index = () => {
     }
   ];
 
+  const links = [
+    {
+      title: "OpenAI Documentation",
+      url: "https://platform.openai.com/docs/",
+      description: "Learn how to build AI-powered applications with OpenAI's platform documentation.",
+      category: "API",
+      icon: <FileText className="h-10 w-10 text-matrix-primary" />
+    },
+    {
+      title: "Hugging Face",
+      url: "https://huggingface.co/",
+      description: "Access thousands of pre-trained models and datasets for machine learning.",
+      category: "Models",
+      icon: <BrainCircuit className="h-10 w-10 text-matrix-secondary" />
+    },
+    {
+      title: "TensorFlow",
+      url: "https://www.tensorflow.org/",
+      description: "Comprehensive tools and resources for machine learning model development.",
+      category: "Framework",
+      icon: <Network className="h-10 w-10 text-matrix-accent" />
+    },
+    {
+      title: "arXiv AI Papers",
+      url: "https://arxiv.org/list/cs.AI/recent",
+      description: "Latest research papers and advancements in artificial intelligence.",
+      category: "Research",
+      icon: <Database className="h-10 w-10 text-matrix-primary" />
+    }
+  ];
+
   const handleSubscribe = (plan: string) => {
     navigate("/signup");
   };
@@ -322,6 +352,47 @@ const Index = () => {
                 value="1.2B+"
                 label="Data Points Analyzed"
               />
+            </div>
+          </div>
+        </section>
+        
+        {/* NEW: Links Section */}
+        <section id="links" className="py-20">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Useful <span className="text-matrix-primary text-glow">Links</span>
+              </h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
+                Essential resources and references for AI developers and researchers.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {links.map((link, index) => (
+                <a 
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="card-container p-6 rounded-lg border border-matrix-border/50 transition-all duration-300 
+                    hover:border-matrix-primary/60 hover:scale-[1.02] flex flex-col h-full group"
+                  style={{ animationDelay: `${(index * 150)}ms` }}
+                >
+                  <div className="mb-4">
+                    {link.icon}
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 text-white pipboy-text">{link.title}</h3>
+                  <div className="text-xs px-2 py-1 bg-matrix-muted text-matrix-primary rounded w-fit mb-3">
+                    {link.category}
+                  </div>
+                  <p className="text-gray-400 text-sm mb-4 flex-grow pipboy-text">{link.description}</p>
+                  <div className="mt-auto flex items-center text-matrix-primary group-hover:text-matrix-secondary transition-colors">
+                    <span className="text-sm pipboy-text">Visit link</span>
+                    <ArrowUpRight className="ml-1 w-4 h-4" />
+                  </div>
+                </a>
+              ))}
             </div>
           </div>
         </section>
