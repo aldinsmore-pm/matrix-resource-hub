@@ -38,7 +38,12 @@ serve(async (req) => {
       throw new Error('Email is required');
     }
     
+    if (!returnUrl) {
+      throw new Error('Return URL is required');
+    }
+    
     console.log(`Creating checkout session for ${plan} plan, billing cycle: ${billingCycle}`);
+    console.log(`Return URL: ${returnUrl}`);
     
     // Map plan names to price IDs (these would be your actual Stripe price IDs)
     const priceMap = {
