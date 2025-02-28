@@ -143,7 +143,6 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
     if (trimmedTag && !tags.includes(trimmedTag)) {
       setTags([...tags, trimmedTag]);
       setTagInput(""); // Clear the input after adding
-      console.log("Added tag:", trimmedTag, "Current tags:", [...tags, trimmedTag]);
     }
   };
 
@@ -156,6 +155,39 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
       e.preventDefault(); // Prevent form submission
       handleAddTag();
     }
+  };
+
+  // Function to copy formatting examples to the content field
+  const addFormattingExample = () => {
+    const example = `# Main Heading
+
+This is a paragraph with some **bold text**.
+
+## Sub Heading
+
+- This is a bullet point
+- This is another bullet point
+- And one more
+
+### Smaller Heading
+
+1. First numbered item
+2. Second numbered item
+3. Third numbered item
+
+Here's some code:
+\`\`\`
+function example() {
+  return "Hello World";
+}
+\`\`\`
+
+This line has a
+line break in it.`;
+
+    setContent(example);
+    setShowFormatHelp(false);
+    toast.success("Formatting example added to content");
   };
 
   return (
@@ -212,26 +244,62 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
             <button 
               type="button"
               onClick={() => setShowFormatHelp(!showFormatHelp)}
-              className="flex items-center text-xs text-matrix-primary hover:text-matrix-primary/80"
+              className="flex items-center text-sm text-matrix-primary hover:text-matrix-primary/80 border border-matrix-primary/30 px-2 py-1 rounded-md"
             >
-              <HelpCircle className="w-3 h-3 mr-1" />
+              <HelpCircle className="w-4 h-4 mr-1" />
               Formatting Help
             </button>
           </div>
           
           {showFormatHelp && (
-            <div className="mb-3 p-3 bg-matrix-bg rounded-md border border-matrix-border text-xs text-gray-300">
-              <p className="mb-2 font-semibold text-matrix-primary">Supported formatting:</p>
-              <ul className="space-y-1 list-disc pl-4">
-                <li><span className="text-matrix-primary font-mono"># Heading 1</span> - For main headings</li>
-                <li><span className="text-matrix-primary font-mono">## Heading 2</span> - For sub-headings</li>
-                <li><span className="text-matrix-primary font-mono">### Heading 3</span> - For smaller headings</li>
-                <li><span className="text-matrix-primary font-mono">- Item</span> - For bullet lists</li>
-                <li><span className="text-matrix-primary font-mono">1. Item</span> - For numbered lists</li>
-                <li><span className="text-matrix-primary font-mono">```code```</span> - For code blocks</li>
-                <li>Double newlines will create new paragraphs</li>
-                <li>Single newlines within paragraphs will create line breaks</li>
-              </ul>
+            <div className="mb-3 p-4 bg-matrix-bg rounded-md border border-matrix-border text-sm text-gray-300">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-semibold text-matrix-primary">Supported Markdown-style formatting:</h4>
+                <button
+                  type="button"
+                  onClick={addFormattingExample}
+                  className="text-xs bg-matrix-primary/20 text-matrix-primary px-2 py-1 rounded hover:bg-matrix-primary/30"
+                >
+                  Insert Example
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="font-medium mb-1 text-white">Headings:</p>
+                  <ul className="space-y-1 list-disc pl-4 text-xs">
+                    <li><code className="text-matrix-primary bg-matrix-bg-alt px-1 py-0.5 rounded"># Heading 1</code> - Main title</li>
+                    <li><code className="text-matrix-primary bg-matrix-bg-alt px-1 py-0.5 rounded">## Heading 2</code> - Section heading</li>
+                    <li><code className="text-matrix-primary bg-matrix-bg-alt px-1 py-0.5 rounded">### Heading 3</code> - Sub-section</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <p className="font-medium mb-1 text-white">Lists:</p>
+                  <ul className="space-y-1 list-disc pl-4 text-xs">
+                    <li><code className="text-matrix-primary bg-matrix-bg-alt px-1 py-0.5 rounded">- Item</code> - Bullet list</li>
+                    <li><code className="text-matrix-primary bg-matrix-bg-alt px-1 py-0.5 rounded">1. Item</code> - Numbered list</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <p className="font-medium mb-1 text-white">Code & Paragraphs:</p>
+                  <ul className="space-y-1 list-disc pl-4 text-xs">
+                    <li><code className="text-matrix-primary bg-matrix-bg-alt px-1 py-0.5 rounded">```code```</code> - Code block (triple backticks)</li>
+                    <li>Double newlines start a new paragraph</li>
+                    <li>Single newline creates a line break</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <p className="font-medium mb-1 text-white">Tips:</p>
+                  <ul className="space-y-1 list-disc pl-4 text-xs">
+                    <li>Copy-paste from any markdown document</li>
+                    <li>Keep formatting when pasting from other sources</li>
+                    <li>Preview formatting in the published view</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
           
