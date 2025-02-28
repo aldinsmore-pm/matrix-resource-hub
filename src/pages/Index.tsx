@@ -7,7 +7,7 @@ import NewsCard from "../components/NewsCard";
 import PricingTable from "../components/PricingTable";
 import Footer from "../components/Footer";
 import DigitalRain from "../components/DigitalRain";
-import { Database, FileText, BrainCircuit, Network, ArrowUpRight } from "lucide-react";
+import { Database, FileText, BrainCircuit, Network, ArrowUpRight, Sparkles, BarChart4 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -96,46 +96,123 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen bg-matrix-bg transition-opacity duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}>
-      <DigitalRain opacity={0.02} density={20} speed={0.6} />
+      {/* New Particle background */}
+      <ParticleBackground />
+      
       <Navbar />
       
       <main className="relative z-10">
         <HeroSection />
         
-        {/* Resources Section */}
-        <section id="resources" className="py-20">
+        {/* Split Layout for Resources and News */}
+        <section className="py-20">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
+            <div className="flex flex-col lg:flex-row gap-8">
+              {/* Resources Section (Left side) */}
+              <div className="lg:w-7/12">
+                <div className="mb-10">
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                    <span className="text-matrix-primary text-glow">Essential</span> AI Resources
+                  </h2>
+                  <p className="text-gray-400 mb-6">
+                    Access our collection of resources to help your enterprise implement AI effectively.
+                  </p>
+                  
+                  {/* Featured Resources Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {resources.slice(0, 4).map((resource, index) => (
+                      <div key={index} className="animate-fade-in" style={{ animationDelay: `${(index * 150)}ms` }}>
+                        <ResourceCard {...resource} />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-8 flex justify-center">
+                    <a 
+                      href="#" 
+                      className="inline-flex items-center text-matrix-primary hover:text-matrix-secondary transition-colors"
+                    >
+                      <span>View All Resources</span>
+                      <ArrowUpRight className="ml-1 w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              {/* News & Updates Section (Right side) */}
+              <div className="lg:w-5/12">
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                    Latest <span className="text-matrix-primary text-glow">News</span>
+                  </h2>
+                  <p className="text-gray-400 mb-6">
+                    Stay updated with the latest trends and developments in AI.
+                  </p>
+                  
+                  {/* News Feed */}
+                  <div className="space-y-6">
+                    {news.map((item, index) => (
+                      <div key={index} className="animate-fade-in-right" style={{ animationDelay: `${(index * 200)}ms` }}>
+                        <NewsCard {...item} />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-8 flex justify-center">
+                    <a 
+                      href="#" 
+                      className="inline-flex items-center text-matrix-primary hover:text-matrix-secondary transition-colors"
+                    >
+                      <span>View All News</span>
+                      <ArrowUpRight className="ml-1 w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        {/* Stats Section */}
+        <section className="py-16 bg-matrix-bg-alt relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-matrix-primary/5 to-transparent"></div>
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                <span className="text-matrix-primary text-glow">Essential</span> AI Resources
+                AI <span className="text-matrix-primary text-glow">Impact</span> Metrics
               </h2>
               <p className="text-gray-400 max-w-2xl mx-auto">
-                Access our comprehensive collection of resources designed to help your enterprise implement and leverage AI effectively.
+                See how our AI solutions are driving results for enterprises across industries.
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {resources.map((resource, index) => (
-                <div key={index} style={{ animationDelay: `${(index * 100) + 200}ms` }}>
-                  <ResourceCard {...resource} />
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-12 text-center">
-              <a 
-                href="#" 
-                className="inline-flex items-center text-matrix-primary hover:text-matrix-secondary transition-colors"
-              >
-                <span>View All Resources</span>
-                <ArrowUpRight className="ml-1 w-4 h-4" />
-              </a>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <StatCard 
+                icon={<BarChart4 className="w-8 h-8 text-matrix-primary" />}
+                value="73%"
+                label="Efficiency Increase"
+              />
+              <StatCard 
+                icon={<Sparkles className="w-8 h-8 text-matrix-secondary" />}
+                value="42%"
+                label="Cost Reduction"
+              />
+              <StatCard 
+                icon={<BrainCircuit className="w-8 h-8 text-matrix-accent" />}
+                value="500+"
+                label="AI Models Deployed"
+              />
+              <StatCard 
+                icon={<Database className="w-8 h-8 text-matrix-primary" />}
+                value="1.2B+"
+                label="Data Points Analyzed"
+              />
             </div>
           </div>
         </section>
         
         {/* Guides Section */}
-        <section id="guides" className="py-20 bg-matrix-bg-alt">
+        <section id="guides" className="py-20">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -175,38 +252,6 @@ const Index = () => {
                 linkText="Explore Guide"
                 link="#"
               />
-            </div>
-          </div>
-        </section>
-        
-        {/* News Section */}
-        <section id="news" className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Latest AI <span className="text-matrix-primary text-glow">News</span>
-              </h2>
-              <p className="text-gray-400 max-w-2xl mx-auto">
-                Stay updated with the latest trends, research, and developments in the AI landscape.
-              </p>
-            </div>
-            
-            <div className="space-y-8">
-              {news.map((item, index) => (
-                <div key={index} style={{ animationDelay: `${index * 200}ms` }}>
-                  <NewsCard {...item} />
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-12 text-center">
-              <a 
-                href="#" 
-                className="inline-flex items-center text-matrix-primary hover:text-matrix-secondary transition-colors"
-              >
-                <span>View All News</span>
-                <ArrowUpRight className="ml-1 w-4 h-4" />
-              </a>
             </div>
           </div>
         </section>
@@ -258,6 +303,137 @@ const Index = () => {
       </main>
       
       <Footer />
+    </div>
+  );
+};
+
+// New background component using particles instead of digital rain
+const ParticleBackground = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas dimensions
+    const updateDimensions = () => {
+      const { innerWidth, innerHeight } = window;
+      setDimensions({ width: innerWidth, height: innerHeight });
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+    };
+
+    // Initial update
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+
+    // Particle settings
+    const particleCount = 80;
+    const particleColor = 'rgba(139, 92, 246, 0.7)'; // Purple color matching matrix-primary
+    const connectionColor = 'rgba(139, 92, 246, 0.15)';
+    const maxDistance = 250;
+
+    // Create particles
+    const particles: {
+      x: number;
+      y: number;
+      size: number;
+      speedX: number;
+      speedY: number;
+      opacity: number;
+    }[] = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 0.5,
+        speedX: (Math.random() - 0.5) * 0.5,
+        speedY: (Math.random() - 0.5) * 0.5,
+        opacity: Math.random() * 0.5 + 0.2
+      });
+    }
+
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Update and draw particles
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        // Update position
+        p.x += p.speedX;
+        p.y += p.speedY;
+
+        // Handle boundary collisions
+        if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+
+        // Draw particle
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = particleColor.replace('0.7', p.opacity.toString());
+        ctx.fill();
+
+        // Draw connections between particles that are close
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < maxDistance) {
+            // Opacity based on distance
+            const opacity = 1 - distance / maxDistance;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = connectionColor.replace('0.15', (opacity * 0.15).toString());
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed top-0 left-0 w-full h-full pointer-events-none z-0"
+      width={dimensions.width}
+      height={dimensions.height}
+    />
+  );
+};
+
+// New component for the stats section
+const StatCard = ({ 
+  icon, 
+  value, 
+  label 
+}: { 
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+}) => {
+  return (
+    <div className="card-container p-6 rounded-lg flex flex-col items-center text-center animate-scale-up hover:animate-pulse-glow">
+      <div className="mb-4">{icon}</div>
+      <div className="text-3xl font-bold text-white mb-2">{value}</div>
+      <div className="text-gray-400">{label}</div>
     </div>
   );
 };
