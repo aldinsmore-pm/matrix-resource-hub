@@ -59,14 +59,11 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
     let listItems = [];
     let listType: 'ordered' | 'unordered' | null = null;
 
-    // Hacker green color for resource content
-    const hackerGreen = "#14b859";
-
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
       // Handle code blocks
-      if (line.trim().startsWith('```') || line.trim().endsWith('```')) {
+      if (line.includes('```')) {
         if (!inCodeBlock) {
           // Start of code block
           inCodeBlock = true;
@@ -75,20 +72,20 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
           if (currentParagraph.trim()) {
             formattedElements.push(
               <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-                {processBoldText(currentParagraph)}
+                {currentParagraph}
               </p>
             );
             currentParagraph = '';
           }
           
           // Start collecting code
-          currentCodeBlock = line.replace(/```/g, '');
+          currentCodeBlock = line.replace('```', '');
         } else {
           // End of code block
           inCodeBlock = false;
           formattedElements.push(
-            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-opacity-50" style={{ borderColor: hackerGreen }}>
-              <code>{currentCodeBlock.replace(/```/g, '')}</code>
+            <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
+              <code>{currentCodeBlock.replace('```', '')}</code>
             </pre>
           );
           currentCodeBlock = '';
@@ -101,40 +98,19 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
         continue;
       }
 
-      // Handle headings with asterisks for bold formatting **Heading**
-      if (line.match(/^\*\*[\d]+\.\s.+\*\*$/) || line.match(/^\*\*.+\*\*$/)) {
-        // Heading with number like **1. Heading** or just **Heading**
-        if (currentParagraph.trim()) {
-          formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {processBoldText(currentParagraph)}
-            </p>
-          );
-          currentParagraph = '';
-        }
-        
-        const headingText = line.replace(/^\*\*|\*\*$/g, '');
-        formattedElements.push(
-          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3" style={{ color: hackerGreen }}>
-            {headingText}
-          </h3>
-        );
-        continue;
-      }
-
-      // Handle traditional headings
+      // Handle headings
       if (line.startsWith('# ')) {
         // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
             <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {processBoldText(currentParagraph)}
+              {currentParagraph}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4" style={{ color: hackerGreen }}>
+          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary">
             {line.substring(2)}
           </h2>
         );
@@ -146,13 +122,13 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
         if (currentParagraph.trim()) {
           formattedElements.push(
             <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {processBoldText(currentParagraph)}
+              {currentParagraph}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3" style={{ color: `${hackerGreen}E6` }}>
+          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary/90">
             {line.substring(3)}
           </h3>
         );
@@ -164,13 +140,13 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
         if (currentParagraph.trim()) {
           formattedElements.push(
             <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-              {processBoldText(currentParagraph)}
+              {currentParagraph}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2" style={{ color: `${hackerGreen}CC` }}>
+          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary/80">
             {line.substring(4)}
           </h4>
         );
@@ -178,14 +154,14 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
       }
 
       // Handle unordered lists
-      if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
+      if (line.startsWith('- ')) {
         // If we're not already in a list, start a new one
         if (!inList) {
           // Finish any current paragraph
           if (currentParagraph.trim()) {
             formattedElements.push(
               <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-                {processBoldText(currentParagraph)}
+                {currentParagraph}
               </p>
             );
             currentParagraph = '';
@@ -195,21 +171,14 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
           listItems = [];
         }
         
-        // Remove the bullet character and trim
-        const bulletText = line.trim().startsWith('- ') 
-          ? line.trim().substring(2) 
-          : line.trim().substring(2);
-          
-        // Add this item to the list with proper formatting for any bold text within it
-        listItems.push(processBoldText(bulletText));
+        // Add this item to the list
+        listItems.push(line.substring(2));
         
         // If this is the last line or the next line is not a list item, end the list
         if (i === lines.length - 1 || 
-            !(lines[i+1].trim().startsWith('- ') || 
-              lines[i+1].trim().startsWith('• ') || 
-              lines[i+1].startsWith('  '))) {
+            !(lines[i+1].startsWith('- ') || lines[i+1].startsWith('  '))) {
           formattedElements.push(
-            <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3" style={{ color: `${hackerGreen}99` }}>
+            <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3">
               {listItems.map((item, idx) => (
                 <li key={idx} className="text-gray-300">{item}</li>
               ))}
@@ -230,105 +199,80 @@ const ResourcesContent = ({ resourceId, onBack }: ResourcesContentProps) => {
           if (currentParagraph.trim()) {
             formattedElements.push(
               <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-                {processBoldText(currentParagraph)}
+                {currentParagraph}
+              </p>
+            );
+            currentParagraph = '';
+          }
+          inList = true;
+          listType = 'ordered';
+          listItems = [];
+        }
+        
+        // Add this item to the list, removing the number and period
+        listItems.push(line.replace(/^\d+\.\s/, ''));
+        
+        // If this is the last line or the next line is not a list item, end the list
+        if (i === lines.length - 1 || 
+            !(/^\d+\.\s/.test(lines[i+1]) || lines[i+1].startsWith('  '))) {
+          formattedElements.push(
+            <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3">
+              {listItems.map((item, idx) => (
+                <li key={idx} className="text-gray-300">{item}</li>
+              ))}
+            </ol>
+          );
+          inList = false;
+          listItems = [];
+        }
+        
+        continue;
+      }
+
+      // Handle bold text
+      const processBoldText = (text: string) => {
+        // Find all **text** patterns and replace with <strong> tags
+        const parts = text.split(/(\*\*[^*]+\*\*)/g);
+        return parts.map((part, index) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+          }
+          return part;
+        });
+      };
+
+      // Handle empty lines (paragraph breaks)
+      if (line.trim() === '') {
+        if (currentParagraph.trim()) {
+          formattedElements.push(
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
+              {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
-        inList = true;
-        listType = 'ordered';
-        listItems = [];
+        continue;
       }
-      
-      // Add this item to the list, removing the number and period
-      listItems.push(processBoldText(line.replace(/^\d+\.\s/, '')));
-      
-      // If this is the last line or the next line is not a list item, end the list
-      if (i === lines.length - 1 || 
-          !(/^\d+\.\s/.test(lines[i+1]) || lines[i+1].startsWith('  '))) {
-        formattedElements.push(
-          <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3" style={{ color: `${hackerGreen}99` }}>
-            {listItems.map((item, idx) => (
-              <li key={idx} className="text-gray-300">{item}</li>
-            ))}
-          </ol>
-        );
-        inList = false;
-        listItems = [];
-      }
-      
-      continue;
-    }
 
-    // Handle special block quotes (like the example prompt with >)
-    if (line.startsWith('> ')) {
-      if (currentParagraph.trim()) {
+      // Regular text (part of a paragraph)
+      if (currentParagraph) {
+        currentParagraph += ' ' + line;
+      } else {
+        currentParagraph = line;
+      }
+
+      // If this is the last line, add the paragraph
+      if (i === lines.length - 1 && currentParagraph.trim()) {
         formattedElements.push(
           <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
             {processBoldText(currentParagraph)}
           </p>
         );
-        currentParagraph = '';
       }
-      
-      formattedElements.push(
-        <blockquote key={`quote-${formattedElements.length}`} className="pl-4 py-1 my-4 italic text-gray-300" style={{ borderLeft: `4px solid ${hackerGreen}` }}>
-          {processBoldText(line.substring(2))}
-        </blockquote>
-      );
-      continue;
     }
 
-    // Handle empty lines (paragraph breaks)
-    if (line.trim() === '') {
-      if (currentParagraph.trim()) {
-        formattedElements.push(
-          <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-            {processBoldText(currentParagraph)}
-          </p>
-        );
-        currentParagraph = '';
-      }
-      continue;
-    }
-
-    // Regular text (part of a paragraph)
-    if (currentParagraph) {
-      currentParagraph += ' ' + line;
-    } else {
-      currentParagraph = line;
-    }
-
-    // If this is the last line, add the paragraph
-    if (i === lines.length - 1 && currentParagraph.trim()) {
-      formattedElements.push(
-        <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
-          {processBoldText(currentParagraph)}
-        </p>
-      );
-    }
-  }
-
-  return formattedElements;
-};
-
-// Process bold text with ** markers
-const processBoldText = (text: string) => {
-  if (!text) return text;
-  
-  // Split the text by bold markers
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  
-  if (parts.length === 1) return text;
-  
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      // This is a bold text section - use the hacker green color
-      return <strong key={index} className="font-bold" style={{ color: "#14b859" }}>{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
-};
+    return formattedElements;
+  };
 
   if (loading) {
     return (
