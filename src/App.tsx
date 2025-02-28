@@ -13,6 +13,7 @@ import Signup from "./pages/Signup";
 import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import Payment from "./pages/Payment"; // Add this import
 import { supabase, isSubscribed } from "./lib/supabase";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
