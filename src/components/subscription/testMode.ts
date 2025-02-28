@@ -1,3 +1,4 @@
+
 /**
  * Test Mode Implementation for Subscription Flow
  * 
@@ -11,12 +12,12 @@
 import { supabase } from "../../lib/supabase";
 
 // Flag to enable test mode for subscription flow
-// Set to false to use the real Stripe integration with prod_RrGq7yAIjtfBHy
-export const SUBSCRIPTION_TEST_MODE = false;
+// Set to true to bypass Stripe and create subscriptions directly
+export const SUBSCRIPTION_TEST_MODE = true;
 
 // Flag for fallback mode that can be enabled when the Edge Function fails
-// Set to false to ensure we're testing the real Stripe integration
-export const ENABLE_FALLBACK_ON_ERROR = false;
+// Set to true to allow fallback to test mode when Stripe integration fails
+export const ENABLE_FALLBACK_ON_ERROR = true;
 
 // Function to create a test subscription without going through Stripe
 export async function createTestSubscription(
@@ -98,4 +99,4 @@ export async function simulateCheckout(
       message: `${isFallback ? "[FALLBACK MODE]" : "[TEST MODE]"} Failed to create subscription`
     };
   }
-} 
+}

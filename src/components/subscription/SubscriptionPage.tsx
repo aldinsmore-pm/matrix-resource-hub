@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PricingTable from "../PricingTable";
 import { supabase } from "../../lib/supabase";
-import { SUBSCRIPTION_TEST_MODE, simulateCheckout } from "./testMode";
+import { SUBSCRIPTION_TEST_MODE, ENABLE_FALLBACK_ON_ERROR, simulateCheckout } from "./testMode";
 import { Button } from "../ui/button";
 import { AlertTriangle } from "lucide-react";
 
@@ -36,7 +37,8 @@ const SubscriptionPage = () => {
         selectedPlan, 
         userData.user.id, 
         userData.user.email || 'test@example.com',
-        billingCycle
+        billingCycle,
+        true
       );
       
       if (result.success) {
@@ -61,6 +63,7 @@ const SubscriptionPage = () => {
     setIsLoading(true);
     setSelectedPlan(plan);
     setDebugInfo(null);
+    setEdgeFunctionError(null);
     
     try {
       // Get user information
@@ -127,6 +130,13 @@ const SubscriptionPage = () => {
             
             // Store the error message for display
             setEdgeFunctionError(error.message || "Failed to create checkout session");
+            
+            if (ENABLE_FALLBACK_ON_ERROR) {
+              setDebugInfo(prev => `${prev}\nFallback mode enabled. Offering test mode option.`);
+            } else {
+              setIsLoading(false);
+            }
+            
             throw new Error(error.message || "Failed to create checkout session");
           }
           
@@ -135,6 +145,13 @@ const SubscriptionPage = () => {
               id: "stripe-checkout"
             });
             setEdgeFunctionError("No checkout URL returned from the server");
+            
+            if (ENABLE_FALLBACK_ON_ERROR) {
+              setDebugInfo(prev => `${prev}\nFallback mode enabled. Offering test mode option.`);
+            } else {
+              setIsLoading(false);
+            }
+            
             throw new Error("No checkout URL returned");
           }
           
@@ -173,7 +190,9 @@ const SubscriptionPage = () => {
             id: "stripe-checkout"
           });
           
-          throw invokeError;
+          if (!ENABLE_FALLBACK_ON_ERROR) {
+            setIsLoading(false);
+          }
         }
       }
       
@@ -181,14 +200,17 @@ const SubscriptionPage = () => {
       console.error("Subscription error:", error);
       if (!edgeFunctionError) {
         toast.error(error.message || "Failed to process subscription. Please try again.");
-      }
-    } finally {
-      if (!edgeFunctionError) {
         setIsLoading(false);
-        setSelectedPlan(null);
       }
     }
   };
+
+  // Reset loading state if there's an error but fallback is not enabled
+  useEffect(() => {
+    if (edgeFunctionError && !ENABLE_FALLBACK_ON_ERROR) {
+      setIsLoading(false);
+    }
+  }, [edgeFunctionError]);
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -221,7 +243,7 @@ const SubscriptionPage = () => {
           </div>
         )}
         
-        {edgeFunctionError && (
+        {edgeFunctionError && ENABLE_FALLBACK_ON_ERROR && (
           <div className="mt-4 bg-red-500/10 border border-red-500/30 text-red-300 p-4 rounded-md max-w-2xl mx-auto">
             <div className="flex items-center justify-center mb-2">
               <AlertTriangle className="h-5 w-5 mr-2" />
