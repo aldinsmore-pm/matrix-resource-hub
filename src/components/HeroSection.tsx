@@ -55,7 +55,7 @@ const HeroSection = () => {
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight animate-fade-in" style={{ animationDelay: "200ms" }}>
             <span className="text-matrix-primary text-glow">Unlock</span> the Power of AI for Your{" "}
-            <span className="text-matrix-primary text-glow relative">
+            <span className="text-matrix-primary text-glow relative inline-block min-w-[180px] md:min-w-[260px] lg:min-w-[320px] text-left">
               {displayText}
               <span className="absolute -right-1 top-0 h-full w-1 bg-matrix-primary animate-pulse"></span>
             </span>
