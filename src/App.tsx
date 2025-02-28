@@ -28,7 +28,7 @@ const App = () => (
           <Route 
             path="/dashboard" 
             element={
-              <ProtectedRoute requireSubscription={true}>
+              <ProtectedRoute requireSubscription={false}>
                 <DashboardPage />
               </ProtectedRoute>
             } 

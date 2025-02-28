@@ -14,11 +14,30 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+    const authTimeout = setTimeout(() => {
+      if (isMounted && loading) {
+        console.error("Authentication check timed out after 10 seconds");
+        setAuthError("Authentication check timed out. Please try refreshing the page.");
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
     async function checkAuth() {
       try {
         console.log("ProtectedRoute: Checking authentication...");
+        
+        // Force a refresh of the session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          throw sessionError;
+        }
+        
         // Check if user is authenticated
         const { data, error } = await supabase.auth.getUser();
         
@@ -28,25 +47,38 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
         }
         
         console.log("Auth data received:", data.user ? "User authenticated" : "No user");
-        setUser(data.user);
         
-        // If user is authenticated and subscription is required, check subscription
-        if (data.user && requireSubscription) {
-          console.log("Checking subscription status...");
-          try {
-            const subscribed = await isSubscribed();
-            console.log("Subscription status:", subscribed ? "Active" : "Inactive");
-            setHasSubscription(subscribed);
-          } catch (subError) {
-            console.error("Subscription check error:", subError);
-            setHasSubscription(false);
+        if (isMounted) {
+          setUser(data.user);
+          
+          // If user is authenticated and subscription is required, check subscription
+          if (data.user && requireSubscription) {
+            console.log("Checking subscription status...");
+            try {
+              const subscribed = await isSubscribed();
+              console.log("Subscription status:", subscribed ? "Active" : "Inactive");
+              if (isMounted) {
+                setHasSubscription(subscribed);
+              }
+            } catch (subError) {
+              console.error("Subscription check error:", subError);
+              if (isMounted) {
+                setHasSubscription(false);
+              }
+            }
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error checking authentication:", error);
-        toast.error("Authentication error. Please try again.");
+        if (isMounted) {
+          setAuthError(error.message || "Authentication error occurred");
+          toast.error("Authentication error. Please try logging in again.");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          clearTimeout(authTimeout);
+          setLoading(false);
+        }
       }
     }
     
@@ -56,25 +88,58 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event);
-        setUser(session?.user || null);
         
-        if (session?.user && requireSubscription) {
-          try {
-            const subscribed = await isSubscribed();
-            setHasSubscription(subscribed);
-          } catch (error) {
-            console.error("Error checking subscription on auth change:", error);
-            setHasSubscription(false);
+        if (isMounted) {
+          setUser(session?.user || null);
+          
+          if (session?.user && requireSubscription) {
+            try {
+              const subscribed = await isSubscribed();
+              if (isMounted) {
+                setHasSubscription(subscribed);
+              }
+            } catch (error) {
+              console.error("Error checking subscription on auth change:", error);
+              if (isMounted) {
+                setHasSubscription(false);
+              }
+            }
           }
         }
       }
     );
     
     return () => {
+      isMounted = false;
+      clearTimeout(authTimeout);
       // Clean up the subscription
       authListener.subscription.unsubscribe();
     };
-  }, [requireSubscription, location.pathname]);
+  }, [requireSubscription, location.pathname, loading]);
+
+  // Show error state
+  if (authError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
+        <div className="text-xl mb-4 text-red-500">Authentication Error</div>
+        <div className="mb-6 text-center max-w-md px-4">{authError}</div>
+        <div className="flex space-x-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-matrix-muted text-white rounded hover:bg-opacity-90 transition-colors"
+          >
+            Refresh Page
+          </button>
+          <button
+            onClick={() => window.location.href = "/login"}
+            className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state
   if (loading) {
