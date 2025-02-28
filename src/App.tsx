@@ -25,31 +25,44 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data } = await supabase.auth.getUser();
+        console.log("ProtectedRoute: Checking authentication...");
+        const { data, error } = await supabase.auth.getUser();
 
-        if (!data.user) {
-          console.log("No user found, redirecting to login");
+        if (error || !data.user) {
+          console.log("ProtectedRoute: No user found or error, redirecting to login");
           setAuthenticated(false);
           setLoading(false);
           return;
         }
 
+        console.log("ProtectedRoute: User authenticated, checking subscription");
         setAuthenticated(true);
         const hasSubscription = await isSubscribed();
+        console.log("ProtectedRoute: Subscription status:", hasSubscription);
         setSubscribed(hasSubscription);
       } catch (error) {
-        console.error("Error checking authentication:", error);
+        console.error("ProtectedRoute: Error checking authentication:", error);
         setAuthenticated(false);
       } finally {
         setLoading(false);
       }
     };
 
+    // Add a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.log("ProtectedRoute: Timeout reached, stopping loading state");
+        setLoading(false);
+        setAuthenticated(false);
+      }
+    }, 5000); // 5 second timeout
+
     checkAuth();
 
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("ProtectedRoute: Auth state changed:", event);
         setAuthenticated(!!session);
         if (session) {
           const hasSubscription = await isSubscribed();
@@ -62,20 +75,28 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
     return () => {
       authListener.subscription.unsubscribe();
+      clearTimeout(timeoutId);
     };
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-matrix-primary">Verifying access...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!authenticated) {
-    console.log("Not authenticated, redirecting to login");
+    console.log("ProtectedRoute: Not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
   if (!subscribed) {
-    console.log("No active purchase, redirecting to payment page");
+    console.log("ProtectedRoute: No active purchase, redirecting to payment page");
     return <Navigate to="/payment" replace />;
   }
 
