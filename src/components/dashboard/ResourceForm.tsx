@@ -236,7 +236,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
                 key={tag} 
                 className="flex items-center bg-matrix-primary/20 text-matrix-primary px-2 py-1 rounded-full text-sm"
               >
-                <span>#{tag}</span>
+                <span>{tag}</span>
                 <button 
                   type="button"
                   onClick={() => removeTag(tag)}
@@ -282,7 +282,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
                     }}
                     className="text-xs px-2 py-1 bg-matrix-bg-alt border border-matrix-border/50 rounded-full hover:bg-matrix-primary/10 hover:border-matrix-primary/30"
                   >
-                    #{tag}
+                    {tag}
                   </button>
                 ))}
               </div>

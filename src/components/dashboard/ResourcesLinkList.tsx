@@ -154,7 +154,7 @@ const ResourcesLinkList = () => {
                     : "bg-matrix-muted/50 text-gray-300 hover:bg-matrix-muted/80"
                 } pipboy-text`}
               >
-                #{tagData.tag}
+                {tagData.tag}
                 <span className="ml-1 opacity-70">({tagData.count})</span>
               </button>
             ))}
@@ -196,7 +196,7 @@ const ResourcesLinkList = () => {
               {resource.tags && resource.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {resource.tags.slice(0, 3).map(tag => (
-                    <span key={tag} className="text-xs text-matrix-primary/70 pipboy-text">#{tag}</span>
+                    <span key={tag} className="text-xs text-matrix-primary/70 pipboy-text">{tag}</span>
                   ))}
                   {resource.tags.length > 3 && (
                     <span className="text-xs text-gray-500 pipboy-text">+{resource.tags.length - 3}</span>
@@ -209,7 +209,7 @@ const ResourcesLinkList = () => {
       ) : (
         <div className="text-center py-4 text-gray-400 pipboy-text">
           {selectedTag ? (
-            <p>No resources found with tag #{selectedTag}</p>
+            <p>No resources found with tag {selectedTag}</p>
           ) : (
             <p>No resources available</p>
           )}

@@ -154,7 +154,7 @@ const PublishedResources = () => {
                   : "bg-matrix-muted text-gray-300 hover:bg-matrix-muted/80"
               }`}
             >
-              #{tagData.tag}
+              {tagData.tag}
               <span className="ml-1 opacity-70">({tagData.count})</span>
             </button>
           ))}
@@ -202,7 +202,7 @@ const PublishedResources = () => {
                           key={tag} 
                           className="text-xs px-1.5 py-0.5 bg-matrix-primary/10 text-matrix-primary/80 rounded-full"
                         >
-                          #{tag}
+                          {tag}
                         </span>
                       ))}
                     </div>
@@ -238,7 +238,7 @@ const PublishedResources = () => {
                             key={tag} 
                             className="text-xs px-2 py-0.5 bg-matrix-primary/10 text-matrix-primary/80 rounded-full"
                           >
-                            #{tag}
+                            {tag}
                           </span>
                         ))}
                       </div>
