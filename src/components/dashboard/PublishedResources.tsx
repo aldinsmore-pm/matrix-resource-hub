@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
@@ -112,11 +111,9 @@ const PublishedResources = () => {
     setSelectedTags([]);
   };
 
-  // Format content with proper styling
   const formatContent = (content: string) => {
     if (!content) return null;
 
-    // Process special formatting
     const lines = content.split('\n');
     const formattedElements = [];
     let inCodeBlock = false;
@@ -129,26 +126,21 @@ const PublishedResources = () => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Handle code blocks
       if (line.trim().startsWith('```') || line.trim().endsWith('```')) {
         if (!inCodeBlock) {
-          // Start of code block
           inCodeBlock = true;
           
-          // If there's any current paragraph text, add it
           if (currentParagraph.trim()) {
             formattedElements.push(
-              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
                 {processBoldText(currentParagraph)}
               </p>
             );
             currentParagraph = '';
           }
           
-          // Start collecting code
           currentCodeBlock = line.replace(/```/g, '');
         } else {
-          // End of code block
           inCodeBlock = false;
           formattedElements.push(
             <pre key={`code-${formattedElements.length}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50 pipboy-text">
@@ -165,12 +157,10 @@ const PublishedResources = () => {
         continue;
       }
 
-      // Handle headings with asterisks for bold formatting **Heading**
       if (line.match(/^\*\*[\d]+\.\s.+\*\*$/) || line.match(/^\*\*.+\*\*$/)) {
-        // Heading with number like **1. Heading** or just **Heading**
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
               {processBoldText(currentParagraph)}
             </p>
           );
@@ -179,26 +169,24 @@ const PublishedResources = () => {
         
         const headingText = line.replace(/^\*\*|\*\*$/g, '');
         formattedElements.push(
-          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-matrix-primary pipboy-text">
+          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-[#14b859] pipboy-text">
             {headingText}
           </h3>
         );
         continue;
       }
 
-      // Handle traditional headings
       if (line.startsWith('# ')) {
-        // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
               {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary pipboy-text">
+          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-[#14b859] pipboy-text">
             {line.substring(2)}
           </h2>
         );
@@ -206,17 +194,16 @@ const PublishedResources = () => {
       }
 
       if (line.startsWith('## ')) {
-        // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
               {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary/90 pipboy-text">
+          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-[#14b859] pipboy-text">
             {line.substring(3)}
           </h3>
         );
@@ -224,31 +211,27 @@ const PublishedResources = () => {
       }
 
       if (line.startsWith('### ')) {
-        // Finish any current paragraph
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
               {processBoldText(currentParagraph)}
             </p>
           );
           currentParagraph = '';
         }
         formattedElements.push(
-          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary/80 pipboy-text">
+          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-[#14b859] pipboy-text">
             {line.substring(4)}
           </h4>
         );
         continue;
       }
 
-      // Handle unordered lists
       if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
-        // If we're not already in a list, start a new one
         if (!inList) {
-          // Finish any current paragraph
           if (currentParagraph.trim()) {
             formattedElements.push(
-              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
                 {processBoldText(currentParagraph)}
               </p>
             );
@@ -259,15 +242,12 @@ const PublishedResources = () => {
           listItems = [];
         }
         
-        // Remove the bullet character and trim
         const bulletText = line.trim().startsWith('- ') 
           ? line.trim().substring(2) 
           : line.trim().substring(2);
           
-        // Add this item to the list with proper formatting for any bold text within it
         listItems.push(processBoldText(bulletText));
         
-        // If this is the last line or the next line is not a list item, end the list
         if (i === lines.length - 1 || 
             !(lines[i+1].trim().startsWith('- ') || 
               lines[i+1].trim().startsWith('• ') || 
@@ -275,7 +255,7 @@ const PublishedResources = () => {
           formattedElements.push(
             <ul key={`ul-${formattedElements.length}`} className="list-disc pl-5 space-y-1 my-3">
               {listItems.map((item, idx) => (
-                <li key={idx} className="text-gray-300 pipboy-text">{item}</li>
+                <li key={idx} className="text-gray-300">{item}</li>
               ))}
             </ul>
           );
@@ -286,14 +266,11 @@ const PublishedResources = () => {
         continue;
       }
 
-      // Handle ordered lists
       if (/^\d+\.\s/.test(line)) {
-        // If we're not already in a list, start a new one
         if (!inList) {
-          // Finish any current paragraph
           if (currentParagraph.trim()) {
             formattedElements.push(
-              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+              <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
                 {processBoldText(currentParagraph)}
               </p>
             );
@@ -304,16 +281,14 @@ const PublishedResources = () => {
           listItems = [];
         }
         
-        // Add this item to the list, removing the number and period
         listItems.push(processBoldText(line.replace(/^\d+\.\s/, '')));
         
-        // If this is the last line or the next line is not a list item, end the list
         if (i === lines.length - 1 || 
             !(/^\d+\.\s/.test(lines[i+1]) || lines[i+1].startsWith('  '))) {
           formattedElements.push(
             <ol key={`ol-${formattedElements.length}`} className="list-decimal pl-5 space-y-1 my-3">
               {listItems.map((item, idx) => (
-                <li key={idx} className="text-gray-300 pipboy-text">{item}</li>
+                <li key={idx} className="text-gray-300">{item}</li>
               ))}
             </ol>
           );
@@ -324,11 +299,10 @@ const PublishedResources = () => {
         continue;
       }
 
-      // Handle special block quotes (like the example prompt with >)
       if (line.startsWith('> ')) {
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
               {processBoldText(currentParagraph)}
             </p>
           );
@@ -336,18 +310,17 @@ const PublishedResources = () => {
         }
         
         formattedElements.push(
-          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-matrix-primary pl-4 py-1 my-4 italic text-gray-300 pipboy-text">
+          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-[#14b859] pl-4 py-1 my-4 italic text-gray-300 pipboy-text">
             {processBoldText(line.substring(2))}
           </blockquote>
         );
         continue;
       }
 
-      // Handle empty lines (paragraph breaks)
       if (line.trim() === '') {
         if (currentParagraph.trim()) {
           formattedElements.push(
-            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+            <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
               {processBoldText(currentParagraph)}
             </p>
           );
@@ -356,17 +329,15 @@ const PublishedResources = () => {
         continue;
       }
 
-      // Regular text (part of a paragraph)
       if (currentParagraph) {
         currentParagraph += ' ' + line;
       } else {
         currentParagraph = line;
       }
 
-      // If this is the last line, add the paragraph
       if (i === lines.length - 1 && currentParagraph.trim()) {
         formattedElements.push(
-          <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300 pipboy-text">
+          <p key={`p-${formattedElements.length}`} className="my-3 text-gray-300">
             {processBoldText(currentParagraph)}
           </p>
         );
@@ -376,19 +347,16 @@ const PublishedResources = () => {
     return formattedElements;
   };
 
-  // Process bold text with ** markers
   const processBoldText = (text: string) => {
     if (!text) return text;
     
-    // Split the text by bold markers
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     
     if (parts.length === 1) return text;
     
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        // This is a bold text section
-        return <strong key={index} className="font-bold text-matrix-primary pipboy-text">{part.slice(2, -2)}</strong>;
+        return <strong key={index} className="font-bold text-[#14b859]">{part.slice(2, -2)}</strong>;
       }
       return part;
     });
@@ -397,7 +365,6 @@ const PublishedResources = () => {
   const filteredResources = resources.filter(resource => {
     if (selectedTags.length === 0) return true;
     
-    // Check if the resource has at least one of the selected tags
     return selectedTags.some(tag => 
       resource.tags && resource.tags.includes(tag)
     );
@@ -409,7 +376,6 @@ const PublishedResources = () => {
         AI Resources
       </h3>
       
-      {/* Tag filtering */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Tag className="w-4 h-4 text-gray-400" />
@@ -511,7 +477,6 @@ const PublishedResources = () => {
                       </span>
                     </div>
                     
-                    {/* Display tags */}
                     {resources.find(r => r.id === selectedResource)?.tags && 
                      resources.find(r => r.id === selectedResource)?.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-4">
