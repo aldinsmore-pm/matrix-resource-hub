@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut } from "lucide-react";
 import { supabase, getProfile, getSubscription } from "../../lib/supabase";
+import ResourcesSection from "./ResourcesSection";
 
 interface Profile {
   id: string;
@@ -178,7 +179,9 @@ const Dashboard = () => {
             </div>
           )}
           
-          {activeSection !== "overview" && (
+          {activeSection === "resources" && <ResourcesSection />}
+          
+          {activeSection !== "overview" && activeSection !== "resources" && (
             <div className="min-h-[400px] flex items-center justify-center">
               <div className="text-center">
                 <h3 className="text-xl font-bold mb-2">{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h3>
