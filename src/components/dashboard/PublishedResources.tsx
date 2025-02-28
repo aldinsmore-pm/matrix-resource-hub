@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
@@ -169,7 +170,7 @@ const PublishedResources = () => {
         
         const headingText = line.replace(/^\*\*|\*\*$/g, '');
         formattedElements.push(
-          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-[#14b859] pipboy-text">
+          <h3 key={`h-${formattedElements.length}`} className="text-lg font-bold my-3 text-matrix-primary pipboy-text">
             {headingText}
           </h3>
         );
@@ -186,7 +187,7 @@ const PublishedResources = () => {
           currentParagraph = '';
         }
         formattedElements.push(
-          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-[#14b859] pipboy-text">
+          <h2 key={`h1-${formattedElements.length}`} className="text-xl font-bold my-4 text-matrix-primary pipboy-text">
             {line.substring(2)}
           </h2>
         );
@@ -203,7 +204,7 @@ const PublishedResources = () => {
           currentParagraph = '';
         }
         formattedElements.push(
-          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-[#14b859] pipboy-text">
+          <h3 key={`h2-${formattedElements.length}`} className="text-lg font-semibold my-3 text-matrix-primary pipboy-text">
             {line.substring(3)}
           </h3>
         );
@@ -220,7 +221,7 @@ const PublishedResources = () => {
           currentParagraph = '';
         }
         formattedElements.push(
-          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-[#14b859] pipboy-text">
+          <h4 key={`h3-${formattedElements.length}`} className="text-base font-medium my-2 text-matrix-primary pipboy-text">
             {line.substring(4)}
           </h4>
         );
@@ -310,7 +311,7 @@ const PublishedResources = () => {
         }
         
         formattedElements.push(
-          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-[#14b859] pl-4 py-1 my-4 italic text-gray-300 pipboy-text">
+          <blockquote key={`quote-${formattedElements.length}`} className="border-l-4 border-matrix-primary pl-4 py-1 my-4 italic text-gray-300 pipboy-text">
             {processBoldText(line.substring(2))}
           </blockquote>
         );
@@ -356,7 +357,7 @@ const PublishedResources = () => {
     
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={index} className="font-bold text-[#14b859]">{part.slice(2, -2)}</strong>;
+        return <strong key={index} className="font-bold text-matrix-primary">{part.slice(2, -2)}</strong>;
       }
       return part;
     });
