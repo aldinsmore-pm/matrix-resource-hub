@@ -24,18 +24,12 @@ const NewsLinkList = () => {
         setError(null);
         console.log("Dashboard: Fetching news from Edge Function");
         
-        // Try the primary method first
-        let success = await tryFetchWithFunction();
+        // Make a direct fetch to the Google Alerts RSS feed
+        let success = await fetchDirectFromGoogleAlerts();
         
-        // If that fails, try the fallback with direct fetching
+        // If that fails, use static data
         if (!success) {
-          console.log("Primary method failed, trying direct XML fetch...");
-          success = await tryDirectFetch();
-        }
-        
-        // If both methods fail, use static data
-        if (!success) {
-          console.log("All fetch methods failed, using fallback data");
+          console.log("Failed to fetch news, using fallback data");
           useStaticFallback();
         }
       } catch (error: any) {
@@ -46,55 +40,39 @@ const NewsLinkList = () => {
       }
     }
     
-    // Primary method: Using our newsapi Edge Function
-    async function tryFetchWithFunction(): Promise<boolean> {
+    async function fetchDirectFromGoogleAlerts(): Promise<boolean> {
       try {
-        const { data, error: functionError } = await supabase.functions.invoke('newsapi');
+        const response = await fetch('https://www.google.com/alerts/feeds/02761415313750958672/11169420478330193957', {
+          headers: {
+            'Accept': 'application/xml, text/xml, */*'
+          }
+        });
         
-        if (functionError) {
-          console.error("Error invoking Edge Function:", functionError);
+        if (!response.ok) {
+          console.error(`Failed to fetch RSS feed: ${response.status}`);
           return false;
         }
         
-        console.log("Dashboard: Received response from Edge Function", data);
+        const xmlText = await response.text();
+        console.log(`Received RSS feed, length: ${xmlText.length}`);
         
-        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-          setNewsItems(data.data);
-          console.log("Dashboard: Successfully fetched news:", data.data.length, "items");
-          return true;
-        } else {
-          console.error("Invalid or empty response from Edge Function:", data);
-          return false;
-        }
-      } catch (error) {
-        console.error("Error in tryFetchWithFunction:", error);
-        return false;
-      }
-    }
-    
-    // Fallback method: Client-side XML parsing from the direct-rss function
-    async function tryDirectFetch(): Promise<boolean> {
-      try {
-        const { data: xmlText, error: functionError } = await supabase.functions.invoke('direct-rss');
-        
-        if (functionError || !xmlText) {
-          console.error("Error getting raw RSS:", functionError);
+        if (xmlText.length < 100) {
+          console.error("RSS feed response too short:", xmlText);
           return false;
         }
         
-        // Client-side parsing using regex
-        const newsData = parseRSSFeed(xmlText as string);
+        const newsData = parseRSSFeed(xmlText);
         
         if (newsData.length === 0) {
           console.error("No entries found in RSS feed");
           return false;
         }
         
-        console.log(`Parsed ${newsData.length} entries from RSS feed`);
+        console.log(`Successfully parsed ${newsData.length} news items`);
         setNewsItems(newsData);
         return true;
       } catch (error) {
-        console.error("Error in tryDirectFetch:", error);
+        console.error("Error fetching from Google Alerts:", error);
         return false;
       }
     }
