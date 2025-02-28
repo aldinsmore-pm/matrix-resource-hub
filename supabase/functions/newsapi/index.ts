@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
+// Remove the DOMParser import since it's causing issues
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +9,47 @@ const corsHeaders = {
 
 // Google Alerts RSS feed URL
 const RSS_FEED_URL = 'https://www.google.com/alerts/feeds/02761415313750958672/11169420478330193957';
+
+// Simple XML parser function using regex
+function parseRSSFeed(xmlText: string) {
+  const items = [];
+  
+  // Extract entry elements using regex
+  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+  let entryMatch;
+  let counter = 1;
+  
+  while ((entryMatch = entryRegex.exec(xmlText)) !== null) {
+    const entryContent = entryMatch[1];
+    
+    // Extract title, link, published date, and content
+    const titleMatch = /<title>(.*?)<\/title>/i.exec(entryContent);
+    const linkMatch = /<link.*?href="(.*?)".*?\/>/i.exec(entryContent);
+    const publishedMatch = /<published>(.*?)<\/published>/i.exec(entryContent);
+    const contentMatch = /<content.*?>([\s\S]*?)<\/content>/i.exec(entryContent);
+    
+    // Extract source from content if possible
+    let source = "Google Alerts";
+    if (contentMatch && contentMatch[1]) {
+      const sourceMatch = contentMatch[1].match(/<a href=.*?>([^<]+)<\/a>/i);
+      if (sourceMatch && sourceMatch[1]) {
+        source = sourceMatch[1];
+      }
+    }
+    
+    items.push({
+      id: counter.toString(),
+      title: titleMatch ? titleMatch[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : "News Item",
+      link: linkMatch ? linkMatch[1] : "#",
+      published_date: publishedMatch ? publishedMatch[1] : new Date().toISOString(),
+      source: source
+    });
+    
+    counter++;
+  }
+  
+  return items;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -30,58 +71,14 @@ serve(async (req) => {
     const xmlText = await response.text();
     console.log("Successfully fetched RSS feed, text length:", xmlText.length);
     
-    // Add more debugging
-    const firstFewChars = xmlText.substring(0, 200);
-    console.log("First few characters:", firstFewChars);
-    
-    // Parse the XML
+    // Use regex-based parser instead of DOMParser
     try {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+      const transformedData = parseRSSFeed(xmlText);
+      console.log(`Parsed ${transformedData.length} entries from RSS feed`);
       
-      if (!xmlDoc) {
-        console.error("Failed to parse XML: document is null");
-        throw new Error("Failed to parse RSS feed XML");
-      }
-      
-      // Extract entries
-      const entries = xmlDoc.querySelectorAll("entry");
-      console.log(`Found ${entries?.length || 0} entries in the RSS feed`);
-      
-      if (!entries || entries.length === 0) {
-        console.error("No entries found in the RSS feed");
+      if (transformedData.length === 0) {
         throw new Error("No entries found in RSS feed");
       }
-      
-      // Transform data to match our application's expected format
-      const transformedData = [];
-      
-      for (let i = 0; i < Math.min(entries.length, 10); i++) {
-        const entry = entries[i];
-        try {
-          const title = entry.querySelector("title")?.textContent || "News Title";
-          const link = entry.querySelector("link")?.getAttribute("href") || "#";
-          const published = entry.querySelector("published")?.textContent || new Date().toISOString();
-          const content = entry.querySelector("content")?.textContent || "";
-          
-          // Extract source from content if possible
-          const sourceMatcher = content.match(/<a href=.*?>([^<]+)<\/a>/);
-          const source = sourceMatcher ? sourceMatcher[1] : "Google Alerts";
-          
-          transformedData.push({
-            id: (i + 1).toString(),
-            title: title.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-            published_date: published,
-            link: link,
-            source: source
-          });
-        } catch (entryError) {
-          console.error("Error processing entry:", entryError);
-          // Continue with next entry
-        }
-      }
-      
-      console.log("Transformed data:", transformedData);
       
       return new Response(JSON.stringify({ data: transformedData }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

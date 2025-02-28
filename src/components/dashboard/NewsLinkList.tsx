@@ -72,7 +72,7 @@ const NewsLinkList = () => {
       }
     }
     
-    // Fallback method: Direct RSS feed parsing on client
+    // Fallback method: Client-side XML parsing from the direct-rss function
     async function tryDirectFetch(): Promise<boolean> {
       try {
         const { data: xmlText, error: functionError } = await supabase.functions.invoke('direct-rss');
@@ -82,47 +82,66 @@ const NewsLinkList = () => {
           return false;
         }
         
-        // Parse the RSS feed on the client side
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText as string, "text/xml");
+        // Client-side parsing using regex
+        const newsData = parseRSSFeed(xmlText as string);
         
-        if (!xmlDoc) {
-          console.error("Failed to parse XML");
-          return false;
-        }
-        
-        const entries = xmlDoc.querySelectorAll("entry");
-        console.log(`Found ${entries.length} entries in RSS feed`);
-        
-        if (!entries || entries.length === 0) {
+        if (newsData.length === 0) {
           console.error("No entries found in RSS feed");
           return false;
         }
         
-        const newsData = Array.from(entries).slice(0, 10).map((entry, index) => {
-          const title = entry.querySelector("title")?.textContent || "News Title";
-          const link = entry.querySelector("link")?.getAttribute("href") || "#";
-          const published = entry.querySelector("published")?.textContent || new Date().toISOString();
-          const content = entry.querySelector("content")?.textContent || "";
-          
-          // Extract source from content if possible
-          const sourceMatcher = content.match(/<a href=.*?>([^<]+)<\/a>/);
-          const source = sourceMatcher ? sourceMatcher[1] : "Google Alerts";
-          
-          return {
-            id: (index + 1).toString(),
-            title: title.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-            published_date: published,
-            link: link,
-            source: source
-          };
-        });
-        
+        console.log(`Parsed ${newsData.length} entries from RSS feed`);
         setNewsItems(newsData);
         return true;
       } catch (error) {
         console.error("Error in tryDirectFetch:", error);
         return false;
+      }
+    }
+    
+    // Client-side RSS parsing using regex
+    function parseRSSFeed(xmlText: string): NewsItem[] {
+      const items: NewsItem[] = [];
+      
+      try {
+        // Extract entry elements using regex
+        const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
+        let entryMatch;
+        let counter = 1;
+        
+        while ((entryMatch = entryRegex.exec(xmlText)) !== null) {
+          const entryContent = entryMatch[1];
+          
+          // Extract title, link, published date, and content
+          const titleMatch = /<title>(.*?)<\/title>/i.exec(entryContent);
+          const linkMatch = /<link.*?href="(.*?)".*?\/>/i.exec(entryContent);
+          const publishedMatch = /<published>(.*?)<\/published>/i.exec(entryContent);
+          const contentMatch = /<content.*?>([\s\S]*?)<\/content>/i.exec(entryContent);
+          
+          // Extract source from content if possible
+          let source = "Google Alerts";
+          if (contentMatch && contentMatch[1]) {
+            const sourceMatch = contentMatch[1].match(/<a href=.*?>([^<]+)<\/a>/i);
+            if (sourceMatch && sourceMatch[1]) {
+              source = sourceMatch[1];
+            }
+          }
+          
+          items.push({
+            id: counter.toString(),
+            title: titleMatch ? titleMatch[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : "News Item",
+            link: linkMatch ? linkMatch[1] : "#",
+            published_date: publishedMatch ? publishedMatch[1] : new Date().toISOString(),
+            source: source
+          });
+          
+          counter++;
+        }
+        
+        return items;
+      } catch (error) {
+        console.error("Error parsing RSS feed:", error);
+        return [];
       }
     }
     

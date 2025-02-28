@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,8 +16,9 @@ serve(async (req) => {
   }
 
   try {
-    // Instead of parsing XML, we'll just serve the raw RSS feed
-    // Sometimes XML parsing can be problematic in edge functions
+    console.log("Fetching raw RSS feed from Google Alerts");
+    
+    // Fetch the RSS feed
     const response = await fetch(RSS_FEED_URL);
     
     if (!response.ok) {
@@ -26,12 +26,14 @@ serve(async (req) => {
     }
     
     const xmlText = await response.text();
+    console.log("Successfully fetched RSS feed, length:", xmlText.length);
     
-    // Return the raw XML
+    // Instead of parsing XML in the Edge Function, just return the raw XML
+    // to let the client handle parsing
     return new Response(xmlText, {
       headers: { 
         ...corsHeaders, 
-        'Content-Type': 'application/xml' 
+        'Content-Type': 'text/plain' // Change to text/plain to avoid parsing issues
       },
       status: 200,
     });
