@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -5,75 +6,41 @@ import Footer from "../components/Footer";
 import LoginForm from "../components/auth/LoginForm";
 import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
-import { createSubscription, supabase, isSubscribed } from "../lib/supabase";
+import { createSubscription, supabase } from "../lib/supabase";
 
 const Login = () => {
   const [loading, setLoading] = useState(true);
   const [testLoading, setTestLoading] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { isAuthenticated, hasSubscription, isLoading, refreshSession } = useAuth();
 
   useEffect(() => {
-    const checkAndSetSession = async () => {
+    const checkAuth = async () => {
       try {
         console.log("Login: Checking session");
-        // First, ensure we're still mounted before proceeding with any redirects
-        let mounted = true;
-        
-        // Get session - this will check both localStorage and perform a server check
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("Login: Error checking session:", sessionError);
-          setLoading(false);
-          return;
-        }
-        
-        if (sessionData?.session) {
-          console.log("Login: Valid session found, checking subscription...");
-          // Check if user has an active subscription
-          const hasSubscription = await isSubscribed();
-          
-          if (hasSubscription && mounted) {
-            console.log("Login: User has subscription, navigating to dashboard");
-            navigate("/dashboard");
-          } else if (mounted) {
-            console.log("Login: User needs subscription, navigating to subscription page");
-            navigate("/subscription");
-          }
-        } else {
-          console.log("Login: No valid session found");
-          setLoading(false);
-        }
+        await refreshSession();
+        setLoading(false);
       } catch (error) {
         console.error("Login: Error checking auth:", error);
         setLoading(false);
       }
     };
     
-    // Check auth immediately
-    checkAndSetSession();
-    
-    // Also listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Login: Auth state changed:", event);
-        if (session) {
-          const hasSubscription = await isSubscribed();
-          if (hasSubscription) {
-            navigate("/dashboard");
-          } else {
-            navigate("/subscription");
-          }
-        }
+    checkAuth();
+  }, [refreshSession]);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      console.log("Login: User is authenticated, checking subscription");
+      if (hasSubscription) {
+        console.log("Login: User has subscription, navigating to dashboard");
+        navigate("/dashboard");
+      } else {
+        console.log("Login: User needs subscription, navigating to subscription page");
+        navigate("/subscription");
       }
-    );
-    
-    // Clean up listener on unmount
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [navigate]);
+    }
+  }, [isAuthenticated, hasSubscription, isLoading, navigate]);
 
   const handleTestLogin = async () => {
     setTestLoading(true);
@@ -97,9 +64,13 @@ const Login = () => {
         console.log("Login successful for test account");
         
         // Check if user has an active subscription
-        const hasSubscription = await isSubscribed();
+        const { data } = await supabase.from('subscriptions')
+          .select('*')
+          .eq('user_id', signInData.user.id)
+          .eq('status', 'active')
+          .single();
         
-        if (!hasSubscription) {
+        if (!data) {
           // Create a subscription for the user if one doesn't exist
           await createSubscription("Professional", 365); // 1 year subscription
           toast.success("Added subscription to your account");
@@ -147,7 +118,7 @@ const Login = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
         <div className="flex flex-col items-center">
@@ -156,6 +127,10 @@ const Login = () => {
         </div>
       </div>
     );
+  }
+
+  if (isAuthenticated) {
+    return null; // Will redirect in useEffect
   }
 
   return (

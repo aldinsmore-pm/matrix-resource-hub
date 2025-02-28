@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   requireSubscription?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requireSubscription = false }: ProtectedRouteProps) => {
   const location = useLocation();
   const { isLoading, isAuthenticated, hasSubscription } = useAuth();
   

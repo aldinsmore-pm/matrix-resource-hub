@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase, getProfile, getSubscription } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
 import Sidebar from "./Sidebar";
 import DashboardHeader from "./DashboardHeader";
@@ -9,29 +8,7 @@ import DashboardOverview from "./DashboardOverview";
 import ResourcesSection from "./ResourcesSection";
 import LinksSection from "./LinksSection";
 import UnderDevelopmentSection from "./UnderDevelopmentSection";
-
-interface Profile {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  avatar_url: string | null;
-}
-
-interface Subscription {
-  id: string;
-  plan: string;
-  status: string;
-  current_period_end: string;
-}
-
-interface Resource {
-  id: string;
-  title: string;
-  category: string;
-  created_at: string;
-  published: boolean;
-}
+import { useAuth } from "../../contexts/AuthContext";
 
 interface LocationState {
   section?: string;
@@ -40,9 +17,8 @@ interface LocationState {
 }
 
 const Dashboard = () => {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [recentResources, setRecentResources] = useState<Resource[]>([]);
+  const { profile, subscription, user, hasSubscription, refreshSubscription } = useAuth();
+  const [recentResources, setRecentResources] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -82,24 +58,17 @@ const Dashboard = () => {
   useEffect(() => {
     async function loadUserData() {
       try {
-        console.log("Checking authentication status...");
-        const { data: authData } = await supabase.auth.getUser();
-        if (!authData.user) {
-          console.log("No authenticated user found, redirecting to login");
-          navigate("/login");
-          return;
-        }
-        console.log("User authenticated, loading profile data...");
-        const userProfile = await getProfile();
-        if (!userProfile) {
-          throw new Error("Failed to load user profile");
-        }
-        setProfile(userProfile);
-        console.log("Loading subscription data...");
-        const userSubscription = await getSubscription();
-        setSubscription(userSubscription);
+        setLoading(true);
+        console.log("Loading dashboard data for user:", user?.id);
 
-        console.log("Loading recent resources...");
+        if (!user) {
+          throw new Error("No authenticated user found");
+        }
+
+        // Refresh subscription to ensure we have the latest data
+        await refreshSubscription();
+
+        // Load recent resources from Supabase
         const { data: resourcesData, error: resourcesError } = await supabase
           .from('resources')
           .select('id, title, category, created_at, published')
@@ -110,6 +79,7 @@ const Dashboard = () => {
           console.error("Error loading resources:", resourcesError);
           throw resourcesError;
         }
+        
         setRecentResources(resourcesData || []);
         console.log("Data loading complete");
       } catch (error: any) {
@@ -120,12 +90,14 @@ const Dashboard = () => {
         setLoading(false);
       }
     }
-    loadUserData();
-  }, [navigate]);
+    
+    if (user) {
+      loadUserData();
+    }
+  }, [user, refreshSubscription]);
   
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
       navigate("/");
       toast.success("Successfully logged out");
     } catch (error) {

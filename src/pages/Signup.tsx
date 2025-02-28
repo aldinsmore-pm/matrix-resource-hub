@@ -8,7 +8,22 @@ import { useAuth } from "../contexts/AuthContext";
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, hasSubscription, isLoading } = useAuth();
+  const { isAuthenticated, hasSubscription, isLoading, refreshSession } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await refreshSession();
+        setLoading(false);
+      } catch (error) {
+        console.error("Signup: Error checking auth:", error);
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, [refreshSession]);
 
   useEffect(() => {
     // If already authenticated, redirect appropriately
@@ -21,8 +36,19 @@ const Signup = () => {
     }
   }, [isAuthenticated, hasSubscription, isLoading, navigate]);
 
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
+        <div className="flex flex-col items-center">
+          <div className="mb-4">Checking session...</div>
+          <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null; // Will redirect in useEffect
   }
 
   return (
