@@ -9,7 +9,7 @@ import { Toaster } from "sonner";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import DashboardPage from "./pages/Dashboard";
+import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import Subscription from "./pages/Subscription";
 import PaymentSuccess from "./pages/PaymentSuccess";
