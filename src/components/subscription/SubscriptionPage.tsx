@@ -15,18 +15,22 @@ const SubscriptionPage = () => {
       // Get the current URL for the return URL
       const returnUrl = window.location.origin;
       
-      // Call the Supabase Edge Function to create a checkout session
-      const { data: user } = await supabase.auth.getUser();
+      // Check if user is logged in
+      const { data: userData } = await supabase.auth.getUser();
       
-      if (!user.user) {
-        throw new Error("You must be logged in to make a purchase");
+      if (!userData.user) {
+        toast.error("You must be logged in to make a purchase");
+        setIsLoading(false);
+        return;
       }
       
       // Get JWT token for authorization
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error("Authentication session not found");
+        toast.error("Authentication session not found");
+        setIsLoading(false);
+        return;
       }
       
       console.log("Calling create-checkout function with:", {
@@ -42,18 +46,23 @@ const SubscriptionPage = () => {
       
       if (error) {
         console.error("Checkout function error:", error);
-        throw new Error(`Failed to create checkout session: ${error.message}`);
+        toast.error(`Failed to create checkout session: ${error.message}`);
+        setIsLoading(false);
+        return;
       }
       
       console.log("Checkout response data:", data);
       
-      if (data?.url) {
-        // Redirect to Stripe Checkout
-        console.log("Redirecting to:", data.url);
-        window.location.href = data.url;
-      } else {
-        throw new Error("Failed to create checkout session: No URL returned");
+      if (!data || !data.url) {
+        toast.error("Failed to create checkout session: No URL returned");
+        console.error("Invalid response from checkout function:", data);
+        setIsLoading(false);
+        return;
       }
+      
+      // Redirect to Stripe Checkout
+      console.log("Redirecting to Stripe checkout:", data.url);
+      window.location.href = data.url;
     } catch (error) {
       console.error("Checkout error:", error);
       toast.error(error.message || "Failed to process purchase. Please try again.");
