@@ -1,7 +1,48 @@
 
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown, Database, Server, Code } from "lucide-react";
 
 const HeroSection = () => {
+  const words = ["Enterprise", "Team", "Coworkers", "Colleagues", "Department"];
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const typingSpeed = useRef(100);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Current word being typed/deleted
+      const currentWord = words[currentWordIndex];
+
+      // If deleting, remove one character
+      if (isDeleting) {
+        setDisplayText(currentWord.substring(0, displayText.length - 1));
+        typingSpeed.current = 50; // Faster when deleting
+      } else {
+        // If typing, add one character
+        setDisplayText(currentWord.substring(0, displayText.length + 1));
+        typingSpeed.current = 100; // Normal speed when typing
+      }
+
+      // If finished typing the word
+      if (!isDeleting && displayText === currentWord) {
+        // Wait a bit at the end of the word
+        typingSpeed.current = 1000;
+        setIsDeleting(true);
+      } 
+      // If finished deleting
+      else if (isDeleting && displayText === "") {
+        setIsDeleting(false);
+        // Move to next word in the array
+        setCurrentWordIndex((prev) => (prev + 1) % words.length);
+        typingSpeed.current = 100;
+      }
+
+    }, typingSpeed.current);
+
+    return () => clearTimeout(timer);
+  }, [displayText, currentWordIndex, isDeleting, words]);
+
   return (
     <section className="relative min-h-screen flex items-center pt-24 pb-16 overflow-hidden">
       <div className="container mx-auto px-4 z-10">
@@ -13,7 +54,11 @@ const HeroSection = () => {
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight animate-fade-in" style={{ animationDelay: "200ms" }}>
-            <span className="text-matrix-primary text-glow">Unlock</span> the Power of AI for Your Enterprise
+            <span className="text-matrix-primary text-glow">Unlock</span> the Power of AI for Your{" "}
+            <span className="text-matrix-primary text-glow relative">
+              {displayText}
+              <span className="absolute -right-1 top-0 h-full w-1 bg-matrix-primary animate-pulse"></span>
+            </span>
           </h1>
           
           <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-3xl animate-fade-in" style={{ animationDelay: "400ms" }}>
