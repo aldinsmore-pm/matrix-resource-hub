@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
@@ -11,11 +12,11 @@ interface AuthContextType {
   profile: Profile | null;
   subscription: Subscription | null;
   hasSubscription: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, metadata?: any) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<any>; // Changed return type to Promise<any>
+  signUp: (email: string, password: string, metadata?: any) => Promise<any>; // Changed return type to Promise<any>
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-  refreshSubscription: () => Promise<void>;
+  refreshSession: () => Promise<any>; // Changed return type to Promise<any>
+  refreshSubscription: () => Promise<Subscription | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,8 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("AuthContext: User signed in:", session.user.id);
           setUser(session.user);
           await loadUserData(session.user.id);
-        } else if (event === "SIGNED_OUT" || event === "USER_DELETED") {
-          console.log("AuthContext: User signed out or deleted");
+        } else if (event === "SIGNED_OUT") {
+          // Fixed error: Removed "USER_DELETED" comparison since it's not in the event type
+          console.log("AuthContext: User signed out");
           setUser(null);
           setProfile(null);
           setSubscription(null);
