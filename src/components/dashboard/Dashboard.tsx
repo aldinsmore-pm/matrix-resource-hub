@@ -189,21 +189,8 @@ const Dashboard = () => {
                 Welcome, {profile.first_name || profile.email.split('@')[0]}
               </h3>
               
-              {/* Two column layout for status cards */}
-              <div className={`grid grid-cols-2 gap-4 transition-all duration-700 delay-200
-                ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-5'}`}>
-                <div className="space-y-4">
-                  <DashboardCard title="Resources Available" value={recentResources.length.toString()} description="AI resources" color="bg-matrix-primary" />
-                  <DashboardCard title="AI Tools" value="8" description="Available tools" color="bg-matrix-accent" />
-                </div>
-                <div className="space-y-4">
-                  <DashboardCard title="Documents" value="0" description="Saved documents" color="bg-matrix-secondary" />
-                  <DashboardCard title="Plan Status" value={subscription?.plan || "Free"} description="Current subscription" color="bg-matrix-primary" />
-                </div>
-              </div>
-              
               {/* Default two column layout for resources and news links */}
-              <div className="grid grid-cols-2 gap-6 mt-8">
+              <div className="grid grid-cols-2 gap-6">
                 <div className={`card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
                   transition-all duration-700 delay-300 transform hover:scale-[1.01] hover:border-matrix-primary/50
                   ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-x-5'}`} style={{
@@ -325,29 +312,7 @@ const SidebarItem = ({
       {active && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-matrix-primary"></span>}
     </button>;
 };
-const DashboardCard = ({
-  title,
-  value,
-  description,
-  color
-}: {
-  title: string;
-  value: string;
-  description: string;
-  color: string;
-}) => {
-  return (
-    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
-      transition-all duration-300 transform hover:scale-[1.03] hover:border-matrix-primary/50"
-      style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
-      <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-3`}>
-        <span className="text-black font-bold">{value}</span>
-      </div>
-      <h4 className="font-semibold text-white pipboy-text">{title}</h4>
-      <p className="text-sm text-gray-400 pipboy-text">{description}</p>
-    </div>
-  );
-};
+
 const ResourceItem = ({
   title,
   category,
