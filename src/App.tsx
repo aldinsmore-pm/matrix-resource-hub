@@ -13,7 +13,8 @@ import Signup from "./pages/Signup";
 import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import PaymentSuccess from "./pages/PaymentSuccess";
-import Payment from "./pages/Payment"; // Add this import
+import Payment from "./pages/Payment"; // Import Payment component
+
 import { supabase, isSubscribed } from "./lib/supabase";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -102,6 +103,8 @@ const App = () => {
         <Route path="/signup" element={<Signup />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        {/* Redirect /subscription to /payment if anyone tries to access it */}
+        <Route path="/subscription" element={<Navigate to="/payment" replace />} />
         <Route
           path="/dashboard/*"
           element={
