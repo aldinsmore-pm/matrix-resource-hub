@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
@@ -30,30 +29,21 @@ const SubscriptionPage = () => {
         throw new Error("Authentication session not found");
       }
       
-      // Create the checkout session - use the full Supabase URL
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://blnaxvnuzikfelwcwzft.supabase.co';
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ 
-          productId: "prod_RrL1RLRnascFV8", 
-          returnUrl 
-        }),
+      // Use the Supabase client to call the Edge Function
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          productId: "prod_RrL1RLRnascFV8",
+          returnUrl
+        }
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create checkout session: ${errorText}`);
+      if (error) {
+        throw new Error(`Failed to create checkout session: ${error.message}`);
       }
       
-      const result = await response.json();
-      
-      if (result.url) {
+      if (data?.url) {
         // Redirect to Stripe Checkout
-        window.location.href = result.url;
+        window.location.href = data.url;
       } else {
         throw new Error("Failed to create checkout session: No URL returned");
       }
