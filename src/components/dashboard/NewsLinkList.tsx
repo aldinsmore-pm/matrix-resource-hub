@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight, CalendarIcon, NewspaperIcon } from "lucide-react";
-import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
 
 interface NewsItem {
@@ -22,104 +21,40 @@ const NewsLinkList = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log("Dashboard: Fetching news from Edge Function");
+        console.log("Dashboard: Fetching AI news");
         
-        // Make a direct fetch to the Google Alerts RSS feed
-        let success = await fetchDirectFromGoogleAlerts();
+        // Try to fetch from a public API endpoint (no CORS issues)
+        const response = await fetch("https://api.spaceflightnewsapi.net/v4/articles?limit=5");
         
-        // If that fails, use static data
-        if (!success) {
-          console.log("Failed to fetch news, using fallback data");
-          useStaticFallback();
+        if (!response.ok) {
+          throw new Error(`Failed to fetch news: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log("Received news data:", data);
+        
+        if (data && data.results && Array.isArray(data.results)) {
+          // Map to our NewsItem format
+          const transformedData = data.results.map((item: any, index: number) => ({
+            id: index.toString(),
+            title: item.title,
+            published_date: item.published_at || new Date().toISOString(),
+            link: item.url,
+            source: item.news_site
+          }));
+          
+          setNewsItems(transformedData);
+          console.log("Transformed news data:", transformedData);
+        } else {
+          throw new Error("Invalid data format received");
         }
       } catch (error: any) {
-        console.error("Error in news fetch process:", error);
+        console.error("Error fetching news:", error);
+        setError(error.message || "Failed to load news");
+        toast.error("Failed to load news feed, showing cached content");
         useStaticFallback();
       } finally {
         setLoading(false);
-      }
-    }
-    
-    async function fetchDirectFromGoogleAlerts(): Promise<boolean> {
-      try {
-        const response = await fetch('https://www.google.com/alerts/feeds/02761415313750958672/11169420478330193957', {
-          headers: {
-            'Accept': 'application/xml, text/xml, */*'
-          }
-        });
-        
-        if (!response.ok) {
-          console.error(`Failed to fetch RSS feed: ${response.status}`);
-          return false;
-        }
-        
-        const xmlText = await response.text();
-        console.log(`Received RSS feed, length: ${xmlText.length}`);
-        
-        if (xmlText.length < 100) {
-          console.error("RSS feed response too short:", xmlText);
-          return false;
-        }
-        
-        const newsData = parseRSSFeed(xmlText);
-        
-        if (newsData.length === 0) {
-          console.error("No entries found in RSS feed");
-          return false;
-        }
-        
-        console.log(`Successfully parsed ${newsData.length} news items`);
-        setNewsItems(newsData);
-        return true;
-      } catch (error) {
-        console.error("Error fetching from Google Alerts:", error);
-        return false;
-      }
-    }
-    
-    // Client-side RSS parsing using regex
-    function parseRSSFeed(xmlText: string): NewsItem[] {
-      const items: NewsItem[] = [];
-      
-      try {
-        // Extract entry elements using regex
-        const entryRegex = /<entry>([\s\S]*?)<\/entry>/g;
-        let entryMatch;
-        let counter = 1;
-        
-        while ((entryMatch = entryRegex.exec(xmlText)) !== null) {
-          const entryContent = entryMatch[1];
-          
-          // Extract title, link, published date, and content
-          const titleMatch = /<title>(.*?)<\/title>/i.exec(entryContent);
-          const linkMatch = /<link.*?href="(.*?)".*?\/>/i.exec(entryContent);
-          const publishedMatch = /<published>(.*?)<\/published>/i.exec(entryContent);
-          const contentMatch = /<content.*?>([\s\S]*?)<\/content>/i.exec(entryContent);
-          
-          // Extract source from content if possible
-          let source = "Google Alerts";
-          if (contentMatch && contentMatch[1]) {
-            const sourceMatch = contentMatch[1].match(/<a href=.*?>([^<]+)<\/a>/i);
-            if (sourceMatch && sourceMatch[1]) {
-              source = sourceMatch[1];
-            }
-          }
-          
-          items.push({
-            id: counter.toString(),
-            title: titleMatch ? titleMatch[1].replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&') : "News Item",
-            link: linkMatch ? linkMatch[1] : "#",
-            published_date: publishedMatch ? publishedMatch[1] : new Date().toISOString(),
-            source: source
-          });
-          
-          counter++;
-        }
-        
-        return items;
-      } catch (error) {
-        console.error("Error parsing RSS feed:", error);
-        return [];
       }
     }
     
@@ -133,8 +68,6 @@ const NewsLinkList = () => {
       ];
       
       setNewsItems(fallbackNews);
-      setError("Couldn't load live news feed");
-      toast.error("Failed to load news feed, showing cached content");
     }
 
     fetchNews();
@@ -164,7 +97,7 @@ const NewsLinkList = () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold mb-4">AI News</h3>
+      <h3 className="text-xl font-semibold mb-4">AI and Tech News</h3>
       
       {error && (
         <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-md mb-4">
@@ -211,12 +144,12 @@ const NewsLinkList = () => {
       
       <div className="mt-4 text-right">
         <a 
-          href="https://www.google.com/alerts" 
+          href="https://www.spaceflightnewsapi.net/" 
           className="text-matrix-primary hover:underline inline-flex items-center"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <span>Powered by Google Alerts</span>
+          <span>Powered by Spaceflight News API</span>
           <ArrowUpRight className="ml-1 w-4 h-4" />
         </a>
       </div>
