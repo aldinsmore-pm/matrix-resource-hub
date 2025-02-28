@@ -1,13 +1,14 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const NEWS_API_KEY = Deno.env.get('NEWS_API_KEY');
-const API_URL = 'https://newsapi.org/v2/everything';
+// Google Alerts RSS feed URL
+const RSS_FEED_URL = 'https://www.google.com/alerts/feeds/02761415313750958672/11169420478330193957';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -16,56 +17,58 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Fetching AI news from NewsAPI.org");
+    console.log("Fetching AI news from Google Alerts RSS feed");
     
-    if (!NEWS_API_KEY) {
-      console.error("NEWS_API_KEY is not defined");
-      throw new Error("API key not configured");
-    }
-    
-    // Calculate date for last 30 days
-    const today = new Date();
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    const fromDate = thirtyDaysAgo.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    
-    // Build the query parameters for AI-related news
-    const params = new URLSearchParams({
-      q: '(artificial intelligence OR AI OR machine learning OR OpenAI OR GPT OR LLM)',
-      sortBy: 'publishedAt',
-      language: 'en',
-      from: fromDate,
-      pageSize: '5',
-      apiKey: NEWS_API_KEY,
-    });
-    
-    console.log(`Making request to ${API_URL}?${params.toString().replace(NEWS_API_KEY, "API_KEY_HIDDEN")}`);
-    
-    // Fetch news from NewsAPI
-    const response = await fetch(`${API_URL}?${params.toString()}`);
+    // Fetch the RSS feed
+    const response = await fetch(RSS_FEED_URL);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`NewsAPI error: ${response.status} - ${errorText}`);
-      throw new Error(`NewsAPI returned status ${response.status}: ${errorText}`);
+      console.error(`RSS feed error: ${response.status} - ${errorText}`);
+      throw new Error(`RSS feed returned status ${response.status}`);
     }
     
-    const newsData = await response.json();
-    console.log(`Successfully fetched ${newsData.articles?.length || 0} news articles`);
+    const xmlText = await response.text();
+    console.log("Successfully fetched RSS feed");
     
-    if (!newsData.articles || !Array.isArray(newsData.articles)) {
-      console.error("Invalid response structure from NewsAPI:", newsData);
-      throw new Error("Unexpected response format from NewsAPI");
+    // Parse the XML
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+    
+    if (!xmlDoc) {
+      throw new Error("Failed to parse RSS feed XML");
     }
+    
+    // Extract entries
+    const entries = xmlDoc.querySelectorAll("entry");
+    
+    if (!entries || entries.length === 0) {
+      console.error("No entries found in the RSS feed");
+      throw new Error("No entries found in RSS feed");
+    }
+    
+    console.log(`Found ${entries.length} entries in the RSS feed`);
     
     // Transform data to match our application's expected format
-    const transformedData = newsData.articles.slice(0, 5).map((article: any, index: number) => ({
-      id: (index + 1).toString(),
-      title: article.title,
-      published_date: article.publishedAt,
-      link: article.url,
-      source: article.source?.name || "News Source"
-    }));
+    const transformedData = Array.from(entries).slice(0, 10).map((entry, index) => {
+      // Extract data from entry
+      const title = entry.querySelector("title")?.textContent || "News Title";
+      const link = entry.querySelector("link")?.getAttribute("href") || "#";
+      const published = entry.querySelector("published")?.textContent || new Date().toISOString();
+      const content = entry.querySelector("content")?.textContent || "";
+      
+      // Extract source from content if possible
+      const sourceMatcher = content.match(/<a href=.*?>([^<]+)<\/a>/);
+      const source = sourceMatcher ? sourceMatcher[1] : "Google Alerts";
+      
+      return {
+        id: (index + 1).toString(),
+        title: title.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+        published_date: published,
+        link: link,
+        source: source
+      };
+    });
     
     console.log("Transformed data:", transformedData);
     
@@ -74,9 +77,9 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("Error fetching news:", error);
+    console.error("Error fetching RSS feed:", error);
     
-    // Fallback data in case of API failure
+    // Fallback data in case of feed failure
     const fallbackNews = [
       { id: '1', title: 'OpenAI Announces GPT-4o', published_date: '2024-05-15T10:00:00Z', link: 'https://openai.com/blog/gpt-4o', source: 'OpenAI' },
       { id: '2', title: 'Introducing the OpenAI Overview', published_date: '2024-04-22T14:30:00Z', link: 'https://openai.com/blog/introducing-the-openai-overview', source: 'OpenAI' },

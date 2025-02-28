@@ -34,13 +34,13 @@ const Index = () => {
     fetchLatestNews();
   }, []);
 
-  // Fetch news from the NewsAPI Edge Function
+  // Fetch news from the Google Alerts RSS Edge Function
   const fetchLatestNews = async () => {
     try {
       setLoadingNews(true);
-      console.log("Fetching news for homepage...");
+      console.log("Homepage: Fetching news from Edge Function");
       
-      // Fetch news from our Supabase Edge Function with NewsAPI integration
+      // Fetch news from our Supabase Edge Function with RSS feed integration
       const { data, error: functionError } = await supabase.functions.invoke('newsapi');
       
       if (functionError) {
@@ -48,7 +48,7 @@ const Index = () => {
         throw new Error('Failed to fetch news from Edge Function');
       }
       
-      console.log("Received response from Edge Function:", data);
+      console.log("Homepage: Received response from Edge Function:", data);
       
       // Check if the response contains data
       if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
@@ -58,14 +58,14 @@ const Index = () => {
           title: item.title || "AI News",
           published_date: item.published_date || new Date().toISOString(),
           link: item.link || "#",
-          source: item.source || "AI Source",
-          excerpt: `Latest AI developments and updates from ${item.source || 'various sources'}.`,
+          source: item.source || "Google Alerts",
+          excerpt: `Latest AI developments from ${item.source || 'Google Alerts'}.`,
           readTime: "3 min read",
           image: getNewsImage(item.source || '')
         }));
         
         setLatestNews(transformedData);
-        console.log("Successfully processed news for homepage:", transformedData);
+        console.log("Homepage: Successfully processed news:", transformedData);
       } else {
         console.error("Invalid or empty response from Edge Function:", data);
         throw new Error('Invalid response from Edge Function');
@@ -249,7 +249,7 @@ const Index = () => {
                     Stay updated with the latest trends and developments in AI.
                   </p>
                   
-                  {/* News Feed - Now with dynamic data from NewsAPI */}
+                  {/* News Feed - Now with dynamic data from Google Alerts RSS */}
                   {loadingNews ? (
                     <div className="h-48 flex items-center justify-center">
                       <div className="w-8 h-8 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
@@ -273,12 +273,12 @@ const Index = () => {
                   
                   <div className="mt-8 flex justify-center">
                     <a 
-                      href="https://newsapi.org" 
+                      href="https://www.google.com/alerts" 
                       className="inline-flex items-center text-matrix-primary hover:text-matrix-secondary transition-colors"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span>Powered by NewsAPI</span>
+                      <span>Powered by Google Alerts</span>
                       <ArrowUpRight className="ml-1 w-4 h-4" />
                     </a>
                   </div>

@@ -20,8 +20,9 @@ const NewsLinkList = () => {
     async function fetchNews() {
       try {
         setLoading(true);
+        console.log("Dashboard: Fetching news from Edge Function");
         
-        // Fetch news from our Supabase Edge Function with NewsAPI integration
+        // Fetch news from our Supabase Edge Function with RSS feed integration
         const { data, error: functionError } = await supabase.functions.invoke('newsapi');
         
         if (functionError) {
@@ -29,10 +30,12 @@ const NewsLinkList = () => {
           throw new Error('Failed to fetch news from Edge Function');
         }
         
+        console.log("Dashboard: Received response from Edge Function", data);
+        
         // Check if the response contains data
         if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
           setNewsItems(data.data);
-          console.log("Successfully fetched news:", data.data.length, "items");
+          console.log("Dashboard: Successfully fetched news:", data.data.length, "items");
         } else {
           console.error("Invalid or empty response from Edge Function:", data);
           throw new Error('Invalid response from Edge Function');
@@ -122,12 +125,12 @@ const NewsLinkList = () => {
       
       <div className="mt-4 text-right">
         <a 
-          href="https://newsapi.org" 
+          href="https://www.google.com/alerts" 
           className="text-matrix-primary hover:underline inline-flex items-center"
           target="_blank"
           rel="noopener noreferrer"
         >
-          <span>Powered by NewsAPI</span>
+          <span>Powered by Google Alerts</span>
           <ArrowUpRight className="ml-1 w-4 h-4" />
         </a>
       </div>
