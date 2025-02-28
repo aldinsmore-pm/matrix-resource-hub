@@ -23,28 +23,43 @@ const LoginForm = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Attempting to sign in with:", { email });
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
       
-      toast.success("Login successful");
-      
-      // Check if user has a subscription
-      const { data: subscriptionData } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('status', 'active')
-        .single();
+      if (data.user) {
+        console.log("Login successful for user:", data.user.id);
+        toast.success("Login successful");
         
-      if (subscriptionData) {
-        navigate("/dashboard");
-      } else {
-        navigate("/subscription");
+        // Check if user has a subscription
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .eq('status', 'active')
+          .single();
+          
+        if (subscriptionError && subscriptionError.code !== 'PGRST116') {
+          console.error("Error checking subscription:", subscriptionError);
+        }
+        
+        if (subscriptionData) {
+          console.log("User has active subscription, redirecting to dashboard");
+          navigate("/dashboard");
+        } else {
+          console.log("User does not have active subscription, redirecting to payment");
+          navigate("/payment");
+        }
       }
     } catch (error: any) {
+      console.error("Login process error:", error);
       toast.error(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);

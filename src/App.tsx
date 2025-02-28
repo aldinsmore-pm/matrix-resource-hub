@@ -26,17 +26,37 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     const checkAuth = async () => {
       try {
         console.log("ProtectedRoute: Checking authentication...");
-        const { data, error } = await supabase.auth.getUser();
-
-        if (error || !data.user) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("ProtectedRoute: Error getting session:", sessionError);
+          setAuthenticated(false);
+          setLoading(false);
+          return;
+        }
+        
+        if (!sessionData.session) {
+          console.log("ProtectedRoute: No active session found, redirecting to login");
+          setAuthenticated(false);
+          setLoading(false);
+          return;
+        }
+        
+        // Double-check by getting the user
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !userData.user) {
           console.log("ProtectedRoute: No user found or error, redirecting to login");
           setAuthenticated(false);
           setLoading(false);
           return;
         }
 
-        console.log("ProtectedRoute: User authenticated, checking subscription");
+        console.log("ProtectedRoute: User authenticated:", userData.user.id);
         setAuthenticated(true);
+        
+        // Check subscription status
+        console.log("ProtectedRoute: Checking subscription status");
         const hasSubscription = await isSubscribed();
         console.log("ProtectedRoute: Subscription status:", hasSubscription);
         setSubscribed(hasSubscription);
@@ -63,11 +83,14 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("ProtectedRoute: Auth state changed:", event);
-        setAuthenticated(!!session);
         if (session) {
+          console.log("ProtectedRoute: New session established for user:", session.user.id);
+          setAuthenticated(true);
           const hasSubscription = await isSubscribed();
           setSubscribed(hasSubscription);
         } else {
+          console.log("ProtectedRoute: Session ended");
+          setAuthenticated(false);
           setSubscribed(false);
         }
       }
@@ -105,16 +128,50 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 
 const App = () => {
   const [session, setSession] = useState(null);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    const initializeAuth = async () => {
+      try {
+        console.log("App: Initializing authentication");
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("App: Error getting session:", error);
+        } else {
+          console.log("App: Session status:", data.session ? "Active session" : "No active session");
+          setSession(data.session);
+        }
+        
+        // Set up auth state listener
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+          console.log("App: Auth state changed, new session:", session ? "Active" : "None");
+          setSession(session);
+        });
+        
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("App: Error initializing auth:", error);
+      } finally {
+        setAppReady(true);
+      }
+    };
+    
+    initializeAuth();
   }, []);
+  
+  if (!appReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-matrix-primary">Loading app...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>

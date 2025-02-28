@@ -112,34 +112,46 @@ export async function getSubscription(): Promise<Subscription | null> {
 export async function isSubscribed(): Promise<boolean> {
   try {
     console.log("Checking if user has purchased...");
-    const { data: user, error: userError } = await supabase.auth.getUser();
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error("Error getting session for purchase check:", sessionError);
+      return false;
+    }
+    
+    if (!sessionData.session) {
+      console.log("No active session for purchase check");
+      return false;
+    }
+    
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
       console.error("Error getting user for purchase check:", userError);
-      throw userError;
+      return false;
     }
     
-    if (!user.user) {
+    if (!userData.user) {
       console.log("No user found for purchase check");
       return false;
     }
     
-    console.log("User found, checking purchase status...");
+    console.log("User found, checking purchase status for:", userData.user.id);
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('user_id', user.user.id)
+      .eq('user_id', userData.user.id)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
       
     if (error) {
-      // If no subscription found, return false
-      if (error.code === 'PGRST116') {
-        console.log("No active purchase found");
-        return false;
-      }
       console.error("Error checking purchase status:", error);
-      throw error;
+      return false;
+    }
+    
+    if (!data) {
+      console.log("No active purchase found");
+      return false;
     }
     
     // Check if the subscription is still valid
@@ -147,7 +159,7 @@ export async function isSubscribed(): Promise<boolean> {
     const endDate = new Date(data.current_period_end);
     const isValid = endDate > now;
     
-    console.log("Purchase status:", isValid ? "Active" : "Expired");
+    console.log("Purchase status:", isValid ? "Active" : "Expired", "until", endDate.toISOString());
     return isValid;
   } catch (error) {
     console.error("isSubscribed error:", error);
