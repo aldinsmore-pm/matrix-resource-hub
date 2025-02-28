@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Book, FileText, BarChart, FileCode, Settings, LogOut } from "lucide-react";
+import { Book, FileText, BarChart, FileCode, Settings, LogOut, Menu, ChevronLeft } from "lucide-react";
 import { supabase, getProfile, getSubscription } from "../../lib/supabase";
 import ResourcesSection from "./ResourcesSection";
 import ResourcesLinkList from "./ResourcesLinkList";
@@ -38,6 +38,7 @@ const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -103,6 +104,10 @@ const Dashboard = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
@@ -144,11 +149,25 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-matrix-bg flex">
       {/* Sidebar */}
-      <div className="w-64 bg-matrix-bg-alt border-r border-matrix-border p-4 hidden md:block">
-        <div className="mb-8">
-          <h1 className="text-xl font-bold text-matrix-primary">
-            AI <span className="text-white">Unlocked</span>
-          </h1>
+      <div 
+        className={`bg-matrix-bg-alt border-r border-matrix-border p-4 transition-all duration-300 ${
+          sidebarOpen ? 'w-64' : 'w-16'
+        } fixed h-full z-10`}
+      >
+        <div className="flex items-center justify-between mb-8">
+          {sidebarOpen ? (
+            <h1 className="text-xl font-bold text-matrix-primary">
+              AI <span className="text-white">Unlocked</span>
+            </h1>
+          ) : (
+            <span className="text-xl font-bold text-matrix-primary">AI</span>
+          )}
+          <button 
+            onClick={toggleSidebar}
+            className="p-1 rounded-md hover:bg-matrix-muted text-matrix-primary"
+          >
+            <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${sidebarOpen ? '' : 'transform rotate-180'}`} />
+          </button>
         </div>
         
         <nav className="space-y-1">
@@ -157,49 +176,68 @@ const Dashboard = () => {
             label="Overview" 
             active={activeSection === "overview"}
             onClick={() => setActiveSection("overview")}
+            collapsed={!sidebarOpen}
           />
           <SidebarItem 
             icon={<Book className="w-5 h-5" />} 
             label="Resources" 
             active={activeSection === "resources"}
             onClick={() => setActiveSection("resources")}
+            collapsed={!sidebarOpen}
           />
           <SidebarItem 
             icon={<FileText className="w-5 h-5" />} 
             label="Documents" 
             active={activeSection === "documents"}
             onClick={() => setActiveSection("documents")}
+            collapsed={!sidebarOpen}
           />
           <SidebarItem 
             icon={<FileCode className="w-5 h-5" />} 
             label="AI Tools" 
             active={activeSection === "tools"}
             onClick={() => setActiveSection("tools")}
+            collapsed={!sidebarOpen}
           />
           <SidebarItem 
             icon={<Settings className="w-5 h-5" />} 
             label="Settings" 
             active={activeSection === "settings"}
             onClick={() => setActiveSection("settings")}
+            collapsed={!sidebarOpen}
           />
           
           <div className="pt-6 mt-6 border-t border-matrix-border">
             <button
               onClick={handleLogout}
-              className="flex items-center px-3 py-2 w-full text-gray-400 hover:text-white hover:bg-matrix-muted rounded transition-colors"
+              className={`flex items-center px-3 py-2 w-full text-gray-400 hover:text-white hover:bg-matrix-muted rounded transition-colors ${
+                !sidebarOpen && 'justify-center'
+              }`}
             >
               <LogOut className="w-5 h-5 mr-3" />
-              <span>Log Out</span>
+              {sidebarOpen && <span>Log Out</span>}
             </button>
           </div>
         </nav>
       </div>
       
       {/* Main content */}
-      <div className="flex-1 overflow-auto">
+      <div className={`flex-1 transition-all duration-300 overflow-auto ${
+        sidebarOpen ? 'ml-64' : 'ml-16'
+      }`}>
         <header className="bg-matrix-bg-alt border-b border-matrix-border p-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white">Dashboard</h2>
+            <div className="flex items-center">
+              {!sidebarOpen && (
+                <button 
+                  onClick={toggleSidebar} 
+                  className="mr-3 hover:bg-matrix-muted p-1 rounded-md"
+                >
+                  <Menu className="w-5 h-5 text-matrix-primary" />
+                </button>
+              )}
+              <h2 className="text-xl font-bold text-white">Dashboard</h2>
+            </div>
             <div className="text-sm text-gray-400">
               <span className="bg-green-500 w-2 h-2 rounded-full inline-block mr-2"></span>
               <span className="mr-1">{subscription?.plan || "Free Plan"}</span>
@@ -235,7 +273,7 @@ const Dashboard = () => {
                 />
               </div>
               
-              {/* New split layout for resources and news links */}
+              {/* Split layout for resources and news links */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                 <div className="card-container p-5 rounded-lg">
                   <ResourcesLinkList />
@@ -309,24 +347,27 @@ const SidebarItem = ({
   icon, 
   label, 
   active, 
-  onClick 
+  onClick,
+  collapsed
 }: { 
   icon: React.ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
+  collapsed: boolean;
 }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center px-3 py-2 w-full rounded transition-colors ${
+      className={`flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 w-full rounded transition-colors ${
         active 
           ? "bg-matrix-primary bg-opacity-10 text-matrix-primary" 
           : "text-gray-400 hover:text-white hover:bg-matrix-muted"
       }`}
+      title={collapsed ? label : undefined}
     >
-      <span className="mr-3">{icon}</span>
-      <span>{label}</span>
+      <span className={collapsed ? '' : 'mr-3'}>{icon}</span>
+      {!collapsed && <span>{label}</span>}
     </button>
   );
 };
