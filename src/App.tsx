@@ -13,7 +13,7 @@ import Signup from "./pages/Signup";
 import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import PaymentSuccess from "./pages/PaymentSuccess";
-import Payment from "./pages/Payment"; // Import Payment component
+import Payment from "./pages/Payment";
 
 import { supabase, isSubscribed } from "./lib/supabase";
 
@@ -160,6 +160,16 @@ const App = () => {
     };
     
     initializeAuth();
+
+    // Add a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (!appReady) {
+        console.log("App: Timeout reached for app initialization, forcing ready state");
+        setAppReady(true);
+      }
+    }, 3000); // 3 second timeout
+    
+    return () => clearTimeout(timeoutId);
   }, []);
   
   if (!appReady) {
@@ -173,29 +183,49 @@ const App = () => {
     );
   }
 
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        {/* Redirect /subscription to /payment if anyone tries to access it */}
-        <Route path="/subscription" element={<Navigate to="/payment" replace />} />
-        <Route
-          path="/dashboard/*"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster richColors closeButton />
-    </Router>
-  );
+  // Wrap everything in a try-catch to help debug rendering issues
+  try {
+    return (
+      <Router>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          {/* Redirect /subscription to /payment if anyone tries to access it */}
+          <Route path="/subscription" element={<Navigate to="/payment" replace />} />
+          <Route
+            path="/dashboard/*"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster richColors closeButton />
+      </Router>
+    );
+  } catch (error) {
+    console.error("Critical rendering error in App component:", error);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
+        <div className="text-center p-4">
+          <h2 className="text-xl text-red-500 mb-4">Application Error</h2>
+          <p className="text-white mb-4">We encountered a problem while loading the application.</p>
+          <p className="text-gray-400 text-sm mb-4">Technical details: {error instanceof Error ? error.message : 'Unknown error'}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90"
+          >
+            Reload Application
+          </button>
+        </div>
+      </div>
+    );
+  }
 };
 
 export default App;

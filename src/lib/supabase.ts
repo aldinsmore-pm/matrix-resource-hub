@@ -5,6 +5,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIU
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+console.log("Supabase client initialized");
+console.log("API URL:", supabaseUrl);
+
 export type Profile = {
   id: string;
   email: string;

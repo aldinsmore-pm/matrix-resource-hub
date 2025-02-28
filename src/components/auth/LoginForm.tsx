@@ -39,22 +39,30 @@ const LoginForm = () => {
         toast.success("Login successful");
         
         // Check if user has a subscription
-        const { data: subscriptionData, error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .eq('status', 'active')
-          .single();
+        try {
+          const { data: subscriptionData, error: subscriptionError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', data.user.id)
+            .eq('status', 'active')
+            .single();
+            
+          if (subscriptionError && subscriptionError.code !== 'PGRST116') {
+            console.error("Error checking subscription:", subscriptionError);
+          }
           
-        if (subscriptionError && subscriptionError.code !== 'PGRST116') {
-          console.error("Error checking subscription:", subscriptionError);
-        }
-        
-        if (subscriptionData) {
-          console.log("User has active subscription, redirecting to dashboard");
-          navigate("/dashboard");
-        } else {
-          console.log("User does not have active subscription, redirecting to payment");
+          console.log("Subscription check result:", subscriptionData ? "Has subscription" : "No subscription");
+          
+          if (subscriptionData) {
+            console.log("User has active subscription, redirecting to dashboard");
+            navigate("/dashboard");
+          } else {
+            console.log("User does not have active subscription, redirecting to payment");
+            navigate("/payment");
+          }
+        } catch (subError: any) {
+          console.error("Subscription check failed:", subError);
+          // Default to redirecting to payment if we can't verify subscription
           navigate("/payment");
         }
       }
@@ -136,7 +144,12 @@ const LoginForm = () => {
             disabled={loading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-matrix-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-matrix-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin mr-2"></div>
+                Signing in...
+              </>
+            ) : "Sign in"}
           </button>
         </div>
         
