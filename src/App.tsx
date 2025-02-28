@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
@@ -8,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import SubscriptionPage from "./components/subscription/SubscriptionPage";
 import SubscriptionConfirmation from "./components/subscription/SubscriptionConfirmation";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Toaster } from "sonner";
 import "./App.css";
 
@@ -32,37 +34,39 @@ function App() {
 
   return (
     <Router>
-      <Toaster position="top-right" richColors />
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/dashboard/*"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/subscription"
-          element={
-            <ProtectedRoute requireSubscription={false}>
-              <SubscriptionPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/subscription-confirmation"
-          element={
-            <ProtectedRoute requireSubscription={false}>
-              <SubscriptionConfirmation />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <AuthProvider>
+        <Toaster position="top-right" richColors />
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/dashboard/*"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscription"
+            element={
+              <ProtectedRoute requireSubscription={false}>
+                <SubscriptionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscription-confirmation"
+            element={
+              <ProtectedRoute requireSubscription={false}>
+                <SubscriptionConfirmation />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }

@@ -2,119 +2,28 @@
 import { useEffect, useState } from "react";
 import Dashboard from "../components/dashboard/Dashboard";
 import ParticleBackground from "../components/ParticleBackground";
-import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { useAuth } from "../contexts/AuthContext";
 
 const DashboardPage = () => {
   const [loaded, setLoaded] = useState(false);
-  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'error'>('checking');
-  const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    let isMounted = true;
-    let authTimeout: NodeJS.Timeout | null = null;
-    
-    console.log("DashboardPage: Initializing...");
-    
-    // Set a short timeout for the auth check
-    authTimeout = setTimeout(() => {
-      if (isMounted && authStatus === 'checking') {
-        console.error("DashboardPage: Authentication check timed out");
-        toast.error("Authentication check timed out. Redirecting to login...");
-        navigate("/login");
-      }
-    }, 2000); // 2 second timeout
-
-    // Check if we have a session
-    const checkAuth = async () => {
-      try {
-        console.log("DashboardPage: Checking session...");
-        
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (authTimeout) clearTimeout(authTimeout);
-        
-        if (error) {
-          console.error("DashboardPage: Error checking session:", error);
-          toast.error("Authentication error. Redirecting to login...");
-          if (isMounted) navigate("/login");
-          return;
-        }
-        
-        if (!data.session) {
-          console.log("DashboardPage: No active session found");
-          if (isMounted) navigate("/login");
-          return;
-        }
-        
-        console.log("DashboardPage: Valid session found");
-        
-        // We have a valid session
-        if (isMounted) {
-          setAuthStatus('authenticated');
-          
-          // Animation delay for the game UI feel
-          setTimeout(() => {
-            if (isMounted) {
-              setLoaded(true);
-            }
-          }, 300);
-        }
-      } catch (error) {
-        if (authTimeout) clearTimeout(authTimeout);
-        console.error("DashboardPage: Error in auth check:", error);
-        
-        if (isMounted) {
-          setAuthStatus('error');
-          toast.error("Authentication error. Redirecting to login...");
-          navigate("/login");
-        }
-      }
-    };
-    
-    // Check auth immediately
-    checkAuth();
-    
-    // Also listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("DashboardPage: Auth state changed:", event);
+    // Simple animation delay for the UI
+    if (isAuthenticated && !isLoading) {
+      const timer = setTimeout(() => {
+        setLoaded(true);
+      }, 300);
       
-      if (event === 'SIGNED_OUT' && isMounted) {
-        navigate("/login");
-      }
-    });
-    
-    // Cleanup function
-    return () => {
-      console.log("DashboardPage: Cleaning up...");
-      isMounted = false;
-      if (authTimeout) clearTimeout(authTimeout);
-      authListener.subscription.unsubscribe();
-    };
-  }, [navigate]);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, isLoading]);
 
-  // Don't render dashboard until auth check is complete
-  if (authStatus === 'checking') {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
-        <div className="mb-4">Verifying session...</div>
+        <div className="mb-4">Loading dashboard...</div>
         <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (authStatus === 'error') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
-        <div className="text-xl mb-4 text-red-500">Authentication Error</div>
-        <div className="mb-6">There was a problem verifying your session.</div>
-        <button
-          onClick={() => navigate("/login")}
-          className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-colors"
-        >
-          Go to Login
-        </button>
       </div>
     );
   }

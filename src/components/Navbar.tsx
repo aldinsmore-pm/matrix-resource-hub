@@ -2,16 +2,14 @@
 import { useState, useEffect } from "react";
 import { Menu, X, ChevronDown, User, Link } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase, isSubscribed } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,55 +18,14 @@ const Navbar = () => {
 
     window.addEventListener("scroll", handleScroll);
     
-    // Check authentication status
-    async function checkAuth() {
-      try {
-        const { data } = await supabase.auth.getUser();
-        
-        if (data.user) {
-          setIsLoggedIn(true);
-          setUserEmail(data.user.email);
-          
-          // Check subscription status
-          const subscribed = await isSubscribed();
-          setHasSubscription(subscribed);
-        } else {
-          setIsLoggedIn(false);
-          setHasSubscription(false);
-          setUserEmail(null);
-        }
-      } catch (error) {
-        console.error("Error checking auth status:", error);
-      }
-    }
-    
-    checkAuth();
-    
-    // Set up auth state change listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setIsLoggedIn(!!session);
-        setUserEmail(session?.user?.email || null);
-        
-        if (session?.user) {
-          const subscribed = await isSubscribed();
-          setHasSubscription(subscribed);
-        } else {
-          setHasSubscription(false);
-        }
-      }
-    );
-    
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      authListener.subscription.unsubscribe();
     };
-  }, [location.pathname]);
+  }, []);
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate("/");
+      await signOut();
     } catch (error) {
       console.error("Error during logout:", error);
     }
@@ -109,11 +66,11 @@ const Navbar = () => {
               </div>
             </div>
 
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                {userEmail && (
+                {user?.email && (
                   <span className="text-gray-400 text-sm hidden lg:inline-block">
-                    {userEmail}
+                    {user.email}
                   </span>
                 )}
                 <a 
@@ -173,11 +130,11 @@ const Navbar = () => {
           </div>
           
           <div className="pt-3 border-t border-matrix-border">
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <>
-                {userEmail && (
+                {user?.email && (
                   <div className="py-2 text-gray-400 text-sm">
-                    {userEmail}
+                    {user.email}
                   </div>
                 )}
                 <MobileNavLink href="/dashboard">Dashboard</MobileNavLink>

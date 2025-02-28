@@ -3,14 +3,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../contexts/AuthContext";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { signIn, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,48 +20,12 @@ const LoginForm = () => {
       return;
     }
     
-    setLoading(true);
-    
     try {
-      console.log("LoginForm: Attempting to sign in user");
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        console.error("LoginForm: Error during sign in:", error);
-        throw error;
-      }
-      
-      console.log("LoginForm: Sign in successful");
-      toast.success("Login successful");
-      
-      // Set a local session indicator for immediate feedback
-      localStorage.setItem('session_active', 'true');
-      
-      // Clear any previous flags
-      localStorage.removeItem('auth_error');
-      
-      // Check if user has a subscription
-      const { data: subscriptionData } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('status', 'active')
-        .single();
-        
-      if (subscriptionData) {
-        navigate("/dashboard");
-      } else {
-        navigate("/subscription");
-      }
-    } catch (error: any) {
-      console.error("LoginForm: Error details:", error);
-      toast.error(error.error_description || error.message || "Login failed. Please try again.");
-      // Mark that we had an auth error
-      localStorage.setItem('auth_error', 'true');
-    } finally {
-      setLoading(false);
+      await signIn(email, password);
+      navigate("/dashboard");
+    } catch (error) {
+      // Error is already handled in the AuthContext
+      console.log("Login failed, but error was already handled");
     }
   };
 
@@ -132,10 +96,10 @@ const LoginForm = () => {
         <div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-matrix-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-matrix-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
         </div>
         

@@ -4,73 +4,24 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SignupForm from "../components/auth/SignupForm";
-import { supabase, isSubscribed } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 const Signup = () => {
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { isAuthenticated, hasSubscription, isLoading } = useAuth();
 
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        // Check if user is already authenticated
-        const { data } = await supabase.auth.getUser();
-        
-        if (data.user) {
-          // Check if user has an active subscription
-          const hasSubscription = await isSubscribed();
-          
-          if (hasSubscription) {
-            navigate("/dashboard");
-          } else {
-            navigate("/subscription");
-          }
-        }
-      } catch (error) {
-        console.error("Error checking auth:", error);
-      } finally {
-        setLoading(false);
+    // If already authenticated, redirect appropriately
+    if (!isLoading && isAuthenticated) {
+      if (hasSubscription) {
+        navigate("/dashboard");
+      } else {
+        navigate("/subscription");
       }
     }
-    
-    checkAuth();
-  }, [navigate]);
+  }, [isAuthenticated, hasSubscription, isLoading, navigate]);
 
-  // Listen for hash fragment in URL that could contain auth tokens
-  useEffect(() => {
-    const handleAuthRedirect = async () => {
-      try {
-        // Check if there's a hash fragment with tokens
-        const hash = window.location.hash;
-        if (hash && (hash.includes("access_token") || hash.includes("error"))) {
-          // Process the hash fragment to set the session
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Auth redirect error:", error);
-            throw error;
-          }
-          
-          if (data.session) {
-            // User is authenticated, check subscription
-            const hasSubscription = await isSubscribed();
-            
-            if (hasSubscription) {
-              navigate("/dashboard");
-            } else {
-              navigate("/subscription");
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error handling auth redirect:", error);
-      }
-    };
-    
-    handleAuthRedirect();
-  }, [navigate]);
-
-  if (loading) {
+  if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 

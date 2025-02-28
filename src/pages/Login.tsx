@@ -1,16 +1,17 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import LoginForm from "../components/auth/LoginForm";
-import { supabase, isSubscribed, createSubscription } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
+import { createSubscription, supabase, isSubscribed } from "../lib/supabase";
 
 const Login = () => {
   const [loading, setLoading] = useState(true);
   const [testLoading, setTestLoading] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const checkAndSetSession = async () => {
