@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight, CalendarIcon } from "lucide-react";
+import { supabase } from "../../lib/supabase";
 
 interface NewsItem {
   id: string;
@@ -19,66 +20,33 @@ const NewsLinkList = () => {
       try {
         setLoading(true);
         
-        // Using a CORS proxy to fetch the RSS feed
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
-        const rssUrl = 'https://openai.com/news/rss.xml';
-        const response = await fetch(`${proxyUrl}${encodeURIComponent(rssUrl)}`);
+        // Fetch news from our Supabase Edge Function
+        const { data, error: functionError } = await supabase.functions.invoke('openai-news');
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch RSS feed');
+        if (functionError) {
+          console.error("Error invoking Edge Function:", functionError);
+          throw new Error('Failed to fetch news from Edge Function');
         }
         
-        const xmlText = await response.text();
-        console.log("Received RSS response:", xmlText.substring(0, 150) + "...");
-        
-        // Check if we got a valid XML response or if it's CloudFlare protection
-        if (xmlText.includes('challenge-platform') || xmlText.includes('<html>')) {
-          console.log("Received HTML instead of XML, falling back to mock data");
-          throw new Error('RSS feed returned HTML instead of XML');
+        // Check if the response contains data
+        if (data && data.data && Array.isArray(data.data)) {
+          setNewsItems(data.data);
+          console.log("Successfully fetched news from Edge Function:", data.data.length, "items");
+        } else {
+          console.error("Invalid response format from Edge Function:", data);
+          throw new Error('Invalid response format from Edge Function');
         }
         
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        
-        // Check for parsing errors
-        const parserError = xmlDoc.querySelector('parsererror');
-        if (parserError) {
-          console.error("XML parsing error:", parserError.textContent);
-          throw new Error('Failed to parse XML feed');
-        }
-        
-        const items = xmlDoc.querySelectorAll("item");
-        console.log(`Found ${items.length} news items in the feed`);
-        
-        const parsedItems: NewsItem[] = [];
-        
-        items.forEach((item, index) => {
-          if (index < 4) { // Limit to 4 items
-            const title = item.querySelector("title")?.textContent || "Untitled";
-            const pubDate = item.querySelector("pubDate")?.textContent || new Date().toUTCString();
-            const link = item.querySelector("link")?.textContent || "#";
-            const guid = item.querySelector("guid")?.textContent || `news-${index}`;
-            
-            parsedItems.push({
-              id: guid,
-              title: title,
-              published_date: pubDate,
-              link: link
-            });
-          }
-        });
-        
-        setNewsItems(parsedItems);
-        
-        if (parsedItems.length === 0) {
-          console.log("No items found in the feed, using fallback data");
-          throw new Error('No items found in feed');
+        // Check if there's an error message from the Edge Function
+        if (data && data.error) {
+          console.warn("Edge Function returned an error:", data.error);
+          setError(data.error);
         }
       } catch (error) {
         console.error("Error fetching OpenAI news:", error);
         setError("Failed to load news feed");
         
-        // Fallback to static data if RSS feed fails
+        // Fallback to static data if Edge Function fails
         const mockNews = [
           { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt4o' },
           { id: '2', title: 'Introducing ChatGPT Enterprise', published_date: 'Mon, 10 May 2024 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-enterprise' },
