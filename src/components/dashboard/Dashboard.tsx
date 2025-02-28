@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut } from "lucide-react";
 import { supabase, getProfile, getSubscription } from "../../lib/supabase";
 import ResourcesSection from "./ResourcesSection";
+import { toast } from "sonner";
 
 interface Profile {
   id: string;
@@ -25,20 +26,38 @@ const Dashboard = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [activeSection, setActiveSection] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function loadUserData() {
       try {
+        console.log("Checking authentication status...");
+        const { data: authData } = await supabase.auth.getUser();
+        
+        if (!authData.user) {
+          console.log("No authenticated user found, redirecting to login");
+          navigate("/login");
+          return;
+        }
+        
+        console.log("User authenticated, loading profile data...");
         // Get user profile
         const userProfile = await getProfile();
+        if (!userProfile) {
+          throw new Error("Failed to load user profile");
+        }
         setProfile(userProfile);
         
+        console.log("Loading subscription data...");
         // Get subscription info
         const userSubscription = await getSubscription();
         setSubscription(userSubscription);
-      } catch (error) {
+        console.log("Data loading complete");
+      } catch (error: any) {
         console.error("Error loading user data:", error);
+        setLoadError(error.message || "Failed to load user data");
+        toast.error("Error loading dashboard data");
       } finally {
         setLoading(false);
       }
@@ -48,16 +67,52 @@ const Dashboard = () => {
   }, [navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
+    try {
+      await supabase.auth.signOut();
+      navigate("/");
+      toast.success("Successfully logged out");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast.error("Failed to sign out");
+    }
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
+        <div className="mb-4">Loading dashboard data...</div>
+        <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
+        <div className="text-xl mb-4 text-red-500">Error loading dashboard</div>
+        <div className="mb-4">{loadError}</div>
+        <button 
+          onClick={handleLogout}
+          className="px-4 py-2 bg-matrix-primary text-black rounded"
+        >
+          Return to Login
+        </button>
+      </div>
+    );
   }
 
   if (!profile) {
-    return <div className="min-h-screen flex items-center justify-center">User not found.</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
+        <div className="text-xl mb-4">User not found.</div>
+        <button 
+          onClick={handleLogout}
+          className="px-4 py-2 bg-matrix-primary text-black rounded"
+        >
+          Return to Login
+        </button>
+      </div>
+    );
   }
 
   return (
