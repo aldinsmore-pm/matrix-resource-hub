@@ -112,6 +112,116 @@ const PublishedResources = () => {
     setSelectedTags([]);
   };
 
+  // Format content with proper styling
+  const formatContent = (content: string) => {
+    // Split by double newlines to separate paragraphs
+    const paragraphs = content.split(/\n\n+/);
+    
+    return paragraphs.map((paragraph, index) => {
+      // For headings (lines that start with # or ##)
+      if (paragraph.startsWith('# ')) {
+        return (
+          <h2 key={index} className="text-xl font-bold my-4 text-matrix-primary">
+            {paragraph.replace('# ', '')}
+          </h2>
+        );
+      } else if (paragraph.startsWith('## ')) {
+        return (
+          <h3 key={index} className="text-lg font-semibold my-3 text-matrix-primary/90">
+            {paragraph.replace('## ', '')}
+          </h3>
+        );
+      } else if (paragraph.startsWith('### ')) {
+        return (
+          <h4 key={index} className="text-base font-medium my-2 text-matrix-primary/80">
+            {paragraph.replace('### ', '')}
+          </h4>
+        );
+      }
+      
+      // For lists
+      else if (paragraph.includes('\n- ')) {
+        const listItems = paragraph.split('\n- ');
+        const introText = listItems.shift();
+        
+        return (
+          <div key={index} className="my-3">
+            {introText && introText !== '- ' && (
+              <p className="mb-2">{introText.replace('- ', '')}</p>
+            )}
+            <ul className="list-disc pl-5 space-y-1">
+              {listItems.map((item, i) => (
+                <li key={i} className="text-gray-300">{item}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+      
+      // For numbered lists
+      else if (paragraph.includes('\n1. ') || paragraph.match(/^\d+\.\s/)) {
+        const listItems = paragraph.split(/\n\d+\.\s/);
+        const introText = listItems.shift();
+        
+        return (
+          <div key={index} className="my-3">
+            {introText && !introText.match(/^\d+\.\s/) && (
+              <p className="mb-2">{introText}</p>
+            )}
+            <ol className="list-decimal pl-5 space-y-1">
+              {listItems.map((item, i) => (
+                <li key={i} className="text-gray-300">{item}</li>
+              ))}
+            </ol>
+          </div>
+        );
+      }
+      
+      // For code blocks
+      else if (paragraph.includes('```')) {
+        const parts = paragraph.split('```');
+        return (
+          <div key={index} className="my-4">
+            {parts.map((part, i) => {
+              if (i % 2 === 0) {
+                return part && <p key={`p-${i}`} className="mb-2">{part}</p>;
+              } else {
+                return (
+                  <pre key={`code-${i}`} className="bg-matrix-bg p-3 rounded-md font-mono text-sm text-gray-300 overflow-x-auto my-2 border border-matrix-border/50">
+                    <code>{part}</code>
+                  </pre>
+                );
+              }
+            })}
+          </div>
+        );
+      }
+      
+      // Handle single newlines within a paragraph (for line breaks)
+      else if (paragraph.includes('\n')) {
+        return (
+          <p key={index} className="my-3 text-gray-300">
+            {paragraph.split('\n').map((line, i) => (
+              <span key={i}>
+                {line}
+                {i < paragraph.split('\n').length - 1 && <br />}
+              </span>
+            ))}
+          </p>
+        );
+      }
+      
+      // Regular paragraphs
+      else {
+        return (
+          <p key={index} className="my-3 text-gray-300">
+            {paragraph}
+          </p>
+        );
+      }
+    });
+  };
+
   const filteredResources = resources.filter(resource => {
     if (selectedTags.length === 0) return true;
     
@@ -244,10 +354,8 @@ const PublishedResources = () => {
                       </div>
                     )}
                     
-                    <div className="prose prose-invert">
-                      {resourceContent.split('\n').map((paragraph, idx) => (
-                        <p key={idx}>{paragraph}</p>
-                      ))}
+                    <div className="prose prose-invert max-w-none mt-6">
+                      {formatContent(resourceContent)}
                     </div>
                   </>
                 )}

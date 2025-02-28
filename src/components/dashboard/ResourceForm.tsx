@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { X, HelpCircle } from "lucide-react";
 
 interface ResourceFormProps {
   resourceId?: string;
@@ -21,6 +21,7 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [showFormatHelp, setShowFormatHelp] = useState(false);
 
   useEffect(() => {
     if (resourceId) {
@@ -206,13 +207,40 @@ const ResourceForm = ({ resourceId, onComplete, onCancel }: ResourceFormProps) =
         </div>
         
         <div>
-          <label className="block text-sm font-medium mb-1">Content *</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium">Content *</label>
+            <button 
+              type="button"
+              onClick={() => setShowFormatHelp(!showFormatHelp)}
+              className="flex items-center text-xs text-matrix-primary hover:text-matrix-primary/80"
+            >
+              <HelpCircle className="w-3 h-3 mr-1" />
+              Formatting Help
+            </button>
+          </div>
+          
+          {showFormatHelp && (
+            <div className="mb-3 p-3 bg-matrix-bg rounded-md border border-matrix-border text-xs text-gray-300">
+              <p className="mb-2 font-semibold text-matrix-primary">Supported formatting:</p>
+              <ul className="space-y-1 list-disc pl-4">
+                <li><span className="text-matrix-primary font-mono"># Heading 1</span> - For main headings</li>
+                <li><span className="text-matrix-primary font-mono">## Heading 2</span> - For sub-headings</li>
+                <li><span className="text-matrix-primary font-mono">### Heading 3</span> - For smaller headings</li>
+                <li><span className="text-matrix-primary font-mono">- Item</span> - For bullet lists</li>
+                <li><span className="text-matrix-primary font-mono">1. Item</span> - For numbered lists</li>
+                <li><span className="text-matrix-primary font-mono">```code```</span> - For code blocks</li>
+                <li>Double newlines will create new paragraphs</li>
+                <li>Single newlines within paragraphs will create line breaks</li>
+              </ul>
+            </div>
+          )}
+          
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full p-2 bg-matrix-bg border border-matrix-border rounded text-white"
-            rows={6}
-            placeholder="Full content of the resource"
+            className="w-full p-2 bg-matrix-bg border border-matrix-border rounded text-white font-mono text-sm"
+            rows={12}
+            placeholder="Full content of the resource. Supports basic formatting like headings (#), lists, and code blocks (```). Use double line breaks for new paragraphs."
             required
           />
         </div>
