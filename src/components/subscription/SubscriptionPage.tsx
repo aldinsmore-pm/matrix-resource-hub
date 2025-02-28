@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
@@ -29,6 +30,11 @@ const SubscriptionPage = () => {
         throw new Error("Authentication session not found");
       }
       
+      console.log("Calling create-checkout function with:", {
+        productId: "prod_RrL1RLRnascFV8",
+        returnUrl
+      });
+      
       // Use the Supabase client to call the Edge Function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
@@ -38,16 +44,20 @@ const SubscriptionPage = () => {
       });
       
       if (error) {
+        console.error("Checkout function error:", error);
         throw new Error(`Failed to create checkout session: ${error.message}`);
       }
       
+      console.log("Checkout response data:", data);
+      
       if (data?.url) {
         // Redirect to Stripe Checkout
+        console.log("Redirecting to:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("Failed to create checkout session: No URL returned");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Checkout error:", error);
       toast.error(error.message || "Failed to process purchase. Please try again.");
       setIsLoading(false);

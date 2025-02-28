@@ -46,9 +46,22 @@ serve(async (req) => {
     }
     
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || ''
+    if (!stripeSecretKey) {
+      console.error('Missing STRIPE_SECRET_KEY environment variable')
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     })
+    
+    console.log('Creating checkout session for user:', user.id)
+    console.log('Product ID:', productId)
+    console.log('Return URL:', returnUrl)
     
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -57,7 +70,7 @@ serve(async (req) => {
         {
           price_data: {
             currency: 'usd',
-            product: productId, // Use the provided productId directly
+            product: productId,
             unit_amount: 9900, // $99.00
           },
           quantity: 1,
@@ -72,6 +85,8 @@ serve(async (req) => {
         user_id: user.id,
       },
     })
+    
+    console.log('Checkout session created:', session.id)
     
     // Return the checkout URL to the client
     return new Response(
