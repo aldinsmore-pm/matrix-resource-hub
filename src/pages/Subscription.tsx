@@ -81,6 +81,38 @@ const Subscription = () => {
     checkAuth();
   }, [navigate, searchParams]);
 
+  // Listen for hash fragment in URL that could contain auth tokens
+  useEffect(() => {
+    const handleAuthRedirect = async () => {
+      try {
+        // Check if there's a hash fragment with tokens
+        const hash = window.location.hash;
+        if (hash && (hash.includes("access_token") || hash.includes("error"))) {
+          // Process the hash fragment to set the session
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Auth redirect error:", error);
+            throw error;
+          }
+          
+          if (data.session) {
+            // Continue with subscription flow or check existing subscription
+            const hasSubscription = await isSubscribed();
+            
+            if (hasSubscription) {
+              navigate("/dashboard");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error handling auth redirect:", error);
+      }
+    };
+    
+    handleAuthRedirect();
+  }, [navigate]);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }

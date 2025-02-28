@@ -24,13 +24,16 @@ const SubscriptionPage = () => {
       
       toast.info(`Processing ${plan} plan subscription...`);
       
+      // Use the current window origin for the return URL
+      const returnUrl = `${window.location.origin}/subscription`;
+      
       // Call our Supabase Edge Function to create a Stripe checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { 
           plan,
           userId: userData.user.id,
           email: userData.user.email,
-          returnUrl: window.location.origin + '/subscription',
+          returnUrl,
         },
         headers: {
           'X-Billing-Cycle': billingCycle

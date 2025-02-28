@@ -30,6 +30,9 @@ const SignupForm = () => {
     setLoading(true);
     
     try {
+      // Get the current site URL for redirection
+      const redirectTo = `${window.location.origin}/subscription`;
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -37,13 +40,14 @@ const SignupForm = () => {
           data: {
             first_name: firstName,
             last_name: lastName
-          }
+          },
+          emailRedirectTo: redirectTo
         }
       });
       
       if (error) throw error;
       
-      toast.success("Account created successfully");
+      toast.success("Account created successfully! Please check your email for confirmation.");
       navigate("/subscription");
     } catch (error: any) {
       toast.error(error.message || "Signup failed. Please try again.");

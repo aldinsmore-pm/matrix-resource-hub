@@ -38,6 +38,40 @@ const Login = () => {
     checkAuth();
   }, [navigate]);
 
+  // Listen for hash fragment in URL that could contain auth tokens
+  useEffect(() => {
+    const handleAuthRedirect = async () => {
+      try {
+        // Check if there's a hash fragment with tokens
+        const hash = window.location.hash;
+        if (hash && (hash.includes("access_token") || hash.includes("error"))) {
+          // Process the hash fragment to set the session
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("Auth redirect error:", error);
+            throw error;
+          }
+          
+          if (data.session) {
+            // User is authenticated, check subscription
+            const hasSubscription = await isSubscribed();
+            
+            if (hasSubscription) {
+              navigate("/dashboard");
+            } else {
+              navigate("/subscription");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error handling auth redirect:", error);
+      }
+    };
+    
+    handleAuthRedirect();
+  }, [navigate]);
+
   const handleTestLogin = async () => {
     setTestLoading(true);
     
@@ -78,7 +112,8 @@ const Login = () => {
           data: {
             first_name: "Test",
             last_name: "User"
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/login`
         }
       });
       
