@@ -1,55 +1,71 @@
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
 import { ArrowUpRight, CalendarIcon } from "lucide-react";
 
 interface NewsItem {
   id: string;
   title: string;
   published_date: string;
+  link: string;
 }
 
 const NewsLinkList = () => {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchNews() {
       try {
         setLoading(true);
-        // This is a placeholder - in a real app, you'd fetch from a news table
-        // For now, we'll simulate with some static data
-        // Replace this with real data fetching when you have a news table
         
+        // Using a CORS proxy to fetch the RSS feed
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const rssUrl = 'https://openai.com/news/rss.xml';
+        const response = await fetch(`${proxyUrl}${encodeURIComponent(rssUrl)}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch RSS feed');
+        }
+        
+        const xmlText = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+        
+        const items = xmlDoc.querySelectorAll("item");
+        const parsedItems: NewsItem[] = [];
+        
+        items.forEach((item, index) => {
+          if (index < 4) { // Limit to 4 items
+            const title = item.querySelector("title")?.textContent || "Untitled";
+            const pubDate = item.querySelector("pubDate")?.textContent || new Date().toUTCString();
+            const link = item.querySelector("link")?.textContent || "#";
+            const guid = item.querySelector("guid")?.textContent || `news-${index}`;
+            
+            parsedItems.push({
+              id: guid,
+              title: title,
+              published_date: pubDate,
+              link: link
+            });
+          }
+        });
+        
+        setNewsItems(parsedItems);
+      } catch (error) {
+        console.error("Error fetching OpenAI news:", error);
+        setError("Failed to load news feed");
+        
+        // Fallback to static data if RSS feed fails
         const mockNews = [
-          { id: '1', title: 'New AI Regulations Impact Enterprise Adoption', published_date: '2023-05-15' },
-          { id: '2', title: 'Machine Learning Models Show 30% Improvement with New Framework', published_date: '2023-05-10' },
-          { id: '3', title: 'Case Study: How Company X Saved $2M with AI Automation', published_date: '2023-05-05' },
-          { id: '4', title: 'The Future of AI in Healthcare: New Research Insights', published_date: '2023-05-01' }
+          { id: '1', title: 'OpenAI Announces GPT-4o', published_date: 'Wed, 15 May 2024 10:00:00 GMT', link: 'https://openai.com/blog/gpt4o' },
+          { id: '2', title: 'Introducing ChatGPT Enterprise', published_date: 'Mon, 10 May 2024 14:30:00 GMT', link: 'https://openai.com/blog/chatgpt-enterprise' },
+          { id: '3', title: 'DALL·E 3 Integration in ChatGPT', published_date: 'Fri, 05 May 2024 09:15:00 GMT', link: 'https://openai.com/blog/dall-e-3-chatgpt' },
+          { id: '4', title: 'Research on AI Safety', published_date: 'Wed, 01 May 2024 08:45:00 GMT', link: 'https://openai.com/blog/ai-safety' }
         ];
         
-        // Simulate network delay
-        setTimeout(() => {
-          setNewsItems(mockNews);
-          setLoading(false);
-        }, 1000);
-        
-        // When you have a real news table, use this instead:
-        /*
-        const { data, error } = await supabase
-          .from('news')
-          .select('id, title, published_date')
-          .order('published_date', { ascending: false })
-          .limit(4);
-
-        if (error) {
-          throw error;
-        }
-
-        setNewsItems(data || []);
-        */
-      } catch (error) {
-        console.error("Error fetching news:", error);
+        setNewsItems(mockNews);
+      } finally {
         setLoading(false);
       }
     }
@@ -76,15 +92,17 @@ const NewsLinkList = () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-semibold mb-4">Latest News</h3>
+      <h3 className="text-xl font-semibold mb-4">OpenAI Latest News</h3>
       
       {newsItems.length > 0 ? (
         <ul className="space-y-3">
           {newsItems.map((news) => (
             <li key={news.id} className="card-container p-3 rounded-lg transform transition-all hover:-translate-y-1">
               <a 
-                href={`/news/${news.id}`} 
+                href={news.link} 
                 className="flex items-center justify-between"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <div>
                   <h4 className="font-medium text-white">{news.title}</h4>
@@ -105,8 +123,13 @@ const NewsLinkList = () => {
       )}
       
       <div className="mt-4 text-right">
-        <a href="/news" className="text-matrix-primary hover:underline inline-flex items-center">
-          <span>View all news</span>
+        <a 
+          href="https://openai.com/news" 
+          className="text-matrix-primary hover:underline inline-flex items-center"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span>View all OpenAI news</span>
           <ArrowUpRight className="ml-1 w-4 h-4" />
         </a>
       </div>
