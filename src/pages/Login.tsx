@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import LoginForm from "../components/auth/LoginForm";
@@ -10,6 +10,7 @@ const Login = () => {
   const [loading, setLoading] = useState(true);
   const [testLoading, setTestLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     async function checkAuth() {
@@ -22,9 +23,11 @@ const Login = () => {
           const hasSubscription = await isSubscribed();
           
           if (hasSubscription) {
-            navigate("/dashboard");
+            // If user came from a specific page, redirect back there
+            const from = location.state?.from?.pathname || "/dashboard";
+            navigate(from);
           } else {
-            navigate("/subscription");
+            navigate("/payment");
           }
         }
       } catch (error) {
@@ -35,7 +38,7 @@ const Login = () => {
     }
     
     checkAuth();
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const handleTestLogin = async () => {
     setTestLoading(true);

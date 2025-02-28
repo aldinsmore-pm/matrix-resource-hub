@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Menu, X, ChevronDown, User, Link } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase, isSubscribed } from "../lib/supabase";
+import { toast } from "sonner";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -19,7 +20,6 @@ const Navbar = () => {
 
     window.addEventListener("scroll", handleScroll);
     
-    // Check authentication status
     async function checkAuth() {
       try {
         const { data } = await supabase.auth.getUser();
@@ -28,7 +28,6 @@ const Navbar = () => {
           setIsLoggedIn(true);
           setUserEmail(data.user.email);
           
-          // Check subscription status
           const subscribed = await isSubscribed();
           setHasSubscription(subscribed);
         } else {
@@ -43,7 +42,6 @@ const Navbar = () => {
     
     checkAuth();
     
-    // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setIsLoggedIn(!!session);
@@ -67,25 +65,27 @@ const Navbar = () => {
   const handleLogout = async () => {
     try {
       console.log("Logging out...");
+      
+      setIsMobileMenuOpen(false);
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error("Error during logout:", error);
+        toast.error("Failed to log out. Please try again.");
         return;
       }
       
-      // Clear user state
       setIsLoggedIn(false);
       setUserEmail(null);
       setHasSubscription(false);
       
-      // Close mobile menu if open
-      setIsMobileMenuOpen(false);
+      toast.success("Successfully logged out");
       
-      // Navigate to home page
       navigate("/");
     } catch (error) {
       console.error("Error during logout:", error);
+      toast.error("An unexpected error occurred. Please try again.");
     }
   };
 
@@ -103,7 +103,6 @@ const Navbar = () => {
             </a>
           </div>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <NavLink href="#resources">Resources</NavLink>
             <NavLink href="#news">News</NavLink>
@@ -159,7 +158,6 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             className="md:hidden text-gray-300 hover:text-white focus:outline-none"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -169,7 +167,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <div
         className={`md:hidden bg-matrix-bg-alt border-t border-matrix-border absolute w-full left-0 transition-all duration-300 ease-in-out shadow-lg ${
           isMobileMenuOpen ? "top-full opacity-100 visible" : "-top-96 opacity-0 invisible"
@@ -223,7 +220,6 @@ const Navbar = () => {
   );
 };
 
-// Desktop Navigation Link
 const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   return (
     <a
@@ -236,7 +232,6 @@ const NavLink = ({ href, children }: { href: string; children: React.ReactNode }
   );
 };
 
-// Dropdown Link
 const DropdownLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   return (
     <a
@@ -248,7 +243,6 @@ const DropdownLink = ({ href, children }: { href: string; children: React.ReactN
   );
 };
 
-// Mobile Navigation Link
 const MobileNavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   return (
     <a

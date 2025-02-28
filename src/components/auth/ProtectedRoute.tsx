@@ -1,171 +1,83 @@
 
-import { useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+// Ensure protected routes properly redirect when a user logs out
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { supabase, isSubscribed } from "../../lib/supabase";
-import { toast } from "sonner";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireSubscription?: boolean;
+  requiresAuth?: boolean;
+  requiresSubscription?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRouteProps) => {
-  const location = useLocation();
+const ProtectedRoute = ({ 
+  requiresAuth = true, 
+  requiresSubscription = false 
+}: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [hasSubscription, setHasSubscription] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
-    let isMounted = true;
-    const authTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.error("Authentication check timed out after 10 seconds");
-        setAuthError("Authentication check timed out. Please try refreshing the page.");
-        setLoading(false);
-      }
-    }, 10000); // 10 second timeout
-
-    async function checkAuth() {
+    async function checkAuthAndSubscription() {
       try {
-        console.log("ProtectedRoute: Checking authentication...");
+        // Check authentication
+        const { data } = await supabase.auth.getUser();
+        const isAuthValid = !!data.user;
+        setIsAuthenticated(isAuthValid);
         
-        // Force a refresh of the session
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          throw sessionError;
+        // If authenticated and subscription is required, check subscription
+        if (isAuthValid && requiresSubscription) {
+          const subscribed = await isSubscribed();
+          setHasActiveSubscription(subscribed);
         }
-        
-        // Check if user is authenticated
-        const { data, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          console.error("Auth error:", error);
-          throw error;
-        }
-        
-        console.log("Auth data received:", data.user ? "User authenticated" : "No user");
-        
-        if (isMounted) {
-          setUser(data.user);
-          
-          // If user is authenticated and subscription is required, check subscription
-          if (data.user && requireSubscription) {
-            console.log("Checking subscription status...");
-            try {
-              const subscribed = await isSubscribed();
-              console.log("Subscription status:", subscribed ? "Active" : "Inactive");
-              if (isMounted) {
-                setHasSubscription(subscribed);
-              }
-            } catch (subError) {
-              console.error("Subscription check error:", subError);
-              if (isMounted) {
-                setHasSubscription(false);
-              }
-            }
-          }
-        }
-      } catch (error: any) {
-        console.error("Error checking authentication:", error);
-        if (isMounted) {
-          setAuthError(error.message || "Authentication error occurred");
-          toast.error("Authentication error. Please try logging in again.");
-        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setIsAuthenticated(false);
+        setHasActiveSubscription(false);
       } finally {
-        if (isMounted) {
-          clearTimeout(authTimeout);
-          setLoading(false);
-        }
+        setLoading(false);
       }
     }
     
-    checkAuth();
+    checkAuthAndSubscription();
     
-    // Set up auth state change listener
+    // Listen for auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event);
+        const isAuthValid = !!session;
+        setIsAuthenticated(isAuthValid);
         
-        if (isMounted) {
-          setUser(session?.user || null);
-          
-          if (session?.user && requireSubscription) {
-            try {
-              const subscribed = await isSubscribed();
-              if (isMounted) {
-                setHasSubscription(subscribed);
-              }
-            } catch (error) {
-              console.error("Error checking subscription on auth change:", error);
-              if (isMounted) {
-                setHasSubscription(false);
-              }
-            }
-          }
+        if (isAuthValid && requiresSubscription) {
+          const subscribed = await isSubscribed();
+          setHasActiveSubscription(subscribed);
+        } else if (!isAuthValid) {
+          setHasActiveSubscription(false);
         }
       }
     );
     
     return () => {
-      isMounted = false;
-      clearTimeout(authTimeout);
-      // Clean up the subscription
       authListener.subscription.unsubscribe();
     };
-  }, [requireSubscription, location.pathname, loading]);
+  }, [requiresAuth, requiresSubscription]);
 
-  // Show error state
-  if (authError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
-        <div className="text-xl mb-4 text-red-500">Authentication Error</div>
-        <div className="mb-6 text-center max-w-md px-4">{authError}</div>
-        <div className="flex space-x-4">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-matrix-muted text-white rounded hover:bg-opacity-90 transition-colors"
-          >
-            Refresh Page
-          </button>
-          <button
-            onClick={() => window.location.href = "/login"}
-            className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-colors"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading state
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
-        <div className="mb-4">Checking authentication...</div>
-        <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
-  
-  // User is not logged in, redirect to login
-  if (!user) {
-    console.log("No authenticated user, redirecting to login");
+
+  if (requiresAuth && !isAuthenticated) {
+    // Redirect to login page if authentication is required but user is not authenticated
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
-  // User is logged in but doesn't have a subscription and it's required
-  if (requireSubscription && !hasSubscription) {
-    console.log("User lacks subscription, redirecting to subscription page");
-    return <Navigate to="/subscription" state={{ from: location }} replace />;
+
+  if (requiresSubscription && !hasActiveSubscription) {
+    // Redirect to subscription page if subscription is required but user doesn't have one
+    return <Navigate to="/payment" state={{ from: location }} replace />;
   }
-  
-  // User is authenticated and has required subscription or it's not required
-  console.log("Access granted to protected route");
-  return <>{children}</>;
+
+  // If all requirements are met, render the child routes
+  return <Outlet />;
 };
 
 export default ProtectedRoute;
