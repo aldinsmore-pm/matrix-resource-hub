@@ -30,9 +30,6 @@ const SignupForm = () => {
     setLoading(true);
     
     try {
-      // Get the current site URL for redirection
-      const redirectTo = `${window.location.origin}/subscription`;
-      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -40,17 +37,13 @@ const SignupForm = () => {
           data: {
             first_name: firstName,
             last_name: lastName
-          },
-          emailRedirectTo: redirectTo
+          }
         }
       });
       
       if (error) throw error;
       
-      // Store the email in localStorage for potential link expiry handling
-      localStorage.setItem('lastSignupEmail', email);
-      
-      toast.success("Account created successfully! Please check your email for confirmation.");
+      toast.success("Account created successfully");
       navigate("/subscription");
     } catch (error: any) {
       toast.error(error.message || "Signup failed. Please try again.");
@@ -62,7 +55,7 @@ const SignupForm = () => {
   return (
     <div className="card-container p-8 rounded-xl max-w-md w-full mx-auto">
       <h2 className="text-2xl font-bold mb-6 text-center text-white">
-        Sign Up for <span className="text-matrix-primary">Aire</span>
+        Sign Up for <span className="text-matrix-primary">AI Unlocked</span>
       </h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">

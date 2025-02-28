@@ -4,43 +4,39 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import LoginForm from "../components/auth/LoginForm";
-import { useAuth } from "../contexts/AuthContext";
+import { supabase, isSubscribed, createSubscription } from "../lib/supabase";
 import { toast } from "sonner";
-import { createSubscription, supabase } from "../lib/supabase";
 
 const Login = () => {
   const [loading, setLoading] = useState(true);
   const [testLoading, setTestLoading] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated, hasSubscription, isLoading, refreshSession } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    async function checkAuth() {
       try {
-        console.log("Login: Checking session");
-        await refreshSession();
-        setLoading(false);
+        // Check if user is already authenticated
+        const { data } = await supabase.auth.getUser();
+        
+        if (data.user) {
+          // Check if user has an active subscription
+          const hasSubscription = await isSubscribed();
+          
+          if (hasSubscription) {
+            navigate("/dashboard");
+          } else {
+            navigate("/subscription");
+          }
+        }
       } catch (error) {
-        console.error("Login: Error checking auth:", error);
+        console.error("Error checking auth:", error);
+      } finally {
         setLoading(false);
-      }
-    };
-    
-    checkAuth();
-  }, [refreshSession]);
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      console.log("Login: User is authenticated, checking subscription");
-      if (hasSubscription) {
-        console.log("Login: User has subscription, navigating to dashboard");
-        navigate("/dashboard");
-      } else {
-        console.log("Login: User needs subscription, navigating to subscription page");
-        navigate("/subscription");
       }
     }
-  }, [isAuthenticated, hasSubscription, isLoading, navigate]);
+    
+    checkAuth();
+  }, [navigate]);
 
   const handleTestLogin = async () => {
     setTestLoading(true);
@@ -50,8 +46,6 @@ const Login = () => {
       const testEmail = "aldinsmore.me@gmail.com";
       const testPassword = "testpassword123";
       
-      console.log("Attempting test login with:", testEmail);
-      
       // Try to sign in first
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: testEmail,
@@ -59,18 +53,13 @@ const Login = () => {
       });
       
       // If sign-in was successful
-      if (signInData?.user) {
+      if (signInData.user) {
         toast.success("Logged in as Test User");
-        console.log("Login successful for test account");
         
         // Check if user has an active subscription
-        const { data } = await supabase.from('subscriptions')
-          .select('*')
-          .eq('user_id', signInData.user.id)
-          .eq('status', 'active')
-          .single();
+        const hasSubscription = await isSubscribed();
         
-        if (!data) {
+        if (!hasSubscription) {
           // Create a subscription for the user if one doesn't exist
           await createSubscription("Professional", 365); // 1 year subscription
           toast.success("Added subscription to your account");
@@ -80,35 +69,34 @@ const Login = () => {
         return;
       }
       
-      // If we reach here, sign-in failed
-      if (signInError) {
-        console.log("Test login error:", signInError);
-        
-        // If login failed, we need to create an account
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: testEmail,
-          password: testPassword,
-          options: {
-            data: {
-              first_name: "Test",
-              last_name: "User"
-            }
+      // If login failed, we need to handle the case where account may exist
+      // but with different credentials. Let's try to create an account.
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: testEmail,
+        password: testPassword,
+        options: {
+          data: {
+            first_name: "Test",
+            last_name: "User"
           }
-        });
-        
-        if (signUpError) {
-          if (signUpError.message.includes("already registered")) {
-            toast.error("Account exists but password is different. Check console for details.");
-            console.log("For development: The account exists but the password is different from what's being attempted.");
-            console.log("You may need to use the Supabase dashboard to reset or manage this account.");
-            return;
-          }
-          throw signUpError;
         }
-        
-        toast.success("Account created! Check your email to confirm registration");
-        toast.info("Note: For development, you might want to disable email confirmation in Supabase");
+      });
+      
+      if (signUpError) {
+        if (signUpError.message.includes("already registered")) {
+          // The account exists but password is different
+          // For a real app, this would be a security concern
+          // For dev purposes, we'll inform the user
+          toast.error("Account exists but password is different. Check console for details.");
+          console.log("For development: The account exists but the password is different from what's being attempted.");
+          console.log("You may need to use the Supabase dashboard to reset or manage this account.");
+          return;
+        }
+        throw signUpError;
       }
+      
+      toast.success("Account created! Check your email to confirm registration");
+      toast.info("Note: For development, you might want to disable email confirmation in Supabase");
       
     } catch (error: any) {
       console.error("Test login error:", error);
@@ -118,19 +106,8 @@ const Login = () => {
     }
   };
 
-  if (loading || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
-        <div className="flex flex-col items-center">
-          <div className="mb-4">Checking session...</div>
-          <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return null; // Will redirect in useEffect
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (

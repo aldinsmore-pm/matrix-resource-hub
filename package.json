@@ -7,16 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:staging": "vite build --mode staging",
-    "build:prod": "vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "setup:dev": "node setup-env.mjs dev",
-    "setup:staging": "node setup-env.mjs staging",
-    "setup:prod": "node setup-env.mjs production",
-    "test:auth": "echo 'Running authentication flow tests...' && node test-scripts/test-auth.js",
-    "test:subscription": "echo 'Running subscription flow tests...' && node test-scripts/test-subscription.js",
-    "deploy:functions": "echo 'This will deploy Edge Functions to Supabase - please customize this command'"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

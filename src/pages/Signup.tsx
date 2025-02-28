@@ -4,51 +4,40 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SignupForm from "../components/auth/SignupForm";
-import { useAuth } from "../contexts/AuthContext";
+import { supabase, isSubscribed } from "../lib/supabase";
 
 const Signup = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, hasSubscription, isLoading, refreshSession } = useAuth();
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    async function checkAuth() {
       try {
-        await refreshSession();
-        setLoading(false);
+        // Check if user is already authenticated
+        const { data } = await supabase.auth.getUser();
+        
+        if (data.user) {
+          // Check if user has an active subscription
+          const hasSubscription = await isSubscribed();
+          
+          if (hasSubscription) {
+            navigate("/dashboard");
+          } else {
+            navigate("/subscription");
+          }
+        }
       } catch (error) {
-        console.error("Signup: Error checking auth:", error);
+        console.error("Error checking auth:", error);
+      } finally {
         setLoading(false);
-      }
-    };
-    
-    checkAuth();
-  }, [refreshSession]);
-
-  useEffect(() => {
-    // If already authenticated, redirect appropriately
-    if (!isLoading && isAuthenticated) {
-      if (hasSubscription) {
-        navigate("/dashboard");
-      } else {
-        navigate("/subscription");
       }
     }
-  }, [isAuthenticated, hasSubscription, isLoading, navigate]);
+    
+    checkAuth();
+  }, [navigate]);
 
-  if (loading || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-matrix-bg">
-        <div className="flex flex-col items-center">
-          <div className="mb-4">Checking session...</div>
-          <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return null; // Will redirect in useEffect
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
   return (

@@ -1,3 +1,4 @@
+
 import { Check } from "lucide-react";
 import { useState } from "react";
 
@@ -16,29 +17,10 @@ interface PricingPlan {
 interface PricingTableProps {
   onSubscribe?: (plan: string) => void;
   disabled?: boolean;
-  billingCycle?: "monthly" | "annually";
-  onBillingCycleChange?: (cycle: "monthly" | "annually") => void;
 }
 
-const PricingTable = ({ 
-  onSubscribe, 
-  disabled = false, 
-  billingCycle = "monthly",
-  onBillingCycleChange
-}: PricingTableProps) => {
-  // Only use internal state if no external control is provided
-  const [internalBillingCycle, setInternalBillingCycle] = useState<"monthly" | "annually">("monthly");
-  
-  // Use either the prop or internal state
-  const effectiveBillingCycle = onBillingCycleChange ? billingCycle : internalBillingCycle;
-  
-  const handleBillingCycleChange = (cycle: "monthly" | "annually") => {
-    if (onBillingCycleChange) {
-      onBillingCycleChange(cycle);
-    } else {
-      setInternalBillingCycle(cycle);
-    }
-  };
+const PricingTable = ({ onSubscribe, disabled = false }: PricingTableProps) => {
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">("monthly");
 
   const plans: PricingPlan[] = [
     {
@@ -107,27 +89,27 @@ const PricingTable = ({
       <div className="flex justify-center mb-10">
         <div className="inline-flex p-1 rounded-lg bg-matrix-muted border border-matrix-border">
           <button
-            onClick={() => handleBillingCycleChange("monthly")}
-            disabled={true}
-            className={`px-4 py-2 text-sm rounded-md transition-all text-gray-500 opacity-50 cursor-not-allowed`}
-            title="Only annual billing is currently available"
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => handleBillingCycleChange("annually")}
+            onClick={() => setBillingCycle("monthly")}
             disabled={disabled}
             className={`px-4 py-2 text-sm rounded-md transition-all ${
-              effectiveBillingCycle === "annually"
+              billingCycle === "monthly"
                 ? "bg-matrix-bg text-matrix-primary"
                 : "text-gray-400 hover:text-white"
             } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            Annually <span className="text-xs text-matrix-secondary">Only Option</span>
+            Monthly
           </button>
-        </div>
-        <div className="ml-2 text-xs text-amber-400 flex items-center">
-          Note: Only annual billing is currently available
+          <button
+            onClick={() => setBillingCycle("annually")}
+            disabled={disabled}
+            className={`px-4 py-2 text-sm rounded-md transition-all ${
+              billingCycle === "annually"
+                ? "bg-matrix-bg text-matrix-primary"
+                : "text-gray-400 hover:text-white"
+            } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            Annually <span className="text-xs text-matrix-secondary">Save 20%</span>
+          </button>
         </div>
       </div>
 
@@ -149,7 +131,7 @@ const PricingTable = ({
               <h3 className="text-2xl font-bold mb-2 text-white">{plan.name}</h3>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-matrix-primary">
-                  {effectiveBillingCycle === "monthly" ? plan.price.monthly : plan.price.annually}
+                  {billingCycle === "monthly" ? plan.price.monthly : plan.price.annually}
                 </span>
                 <span className="text-gray-400">/month</span>
               </div>
