@@ -23,14 +23,25 @@ const LoginForm = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("LoginForm: Attempting to sign in user");
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("LoginForm: Error during sign in:", error);
+        throw error;
+      }
       
+      console.log("LoginForm: Sign in successful");
       toast.success("Login successful");
+      
+      // Set a local session indicator for immediate feedback
+      localStorage.setItem('session_active', 'true');
+      
+      // Clear any previous flags
+      localStorage.removeItem('auth_error');
       
       // Check if user has a subscription
       const { data: subscriptionData } = await supabase
@@ -45,7 +56,10 @@ const LoginForm = () => {
         navigate("/subscription");
       }
     } catch (error: any) {
-      toast.error(error.message || "Login failed. Please try again.");
+      console.error("LoginForm: Error details:", error);
+      toast.error(error.error_description || error.message || "Login failed. Please try again.");
+      // Mark that we had an auth error
+      localStorage.setItem('auth_error', 'true');
     } finally {
       setLoading(false);
     }

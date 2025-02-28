@@ -15,89 +15,129 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
   const [user, setUser] = useState<any>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-
-  // Immediately check for session in localStorage to avoid showing the loading state unnecessarily
-  const hasLocalSession = Boolean(localStorage.getItem('supabase.auth.token'));
   
   useEffect(() => {
-    // If no local session exists, skip the auth check
-    if (!hasLocalSession) {
-      setLoading(false);
-      return;
-    }
-    
     let isMounted = true;
     let authTimeout: NodeJS.Timeout;
     
+    console.log("ProtectedRoute: Mounting component...");
+    
     // Set a timeout to prevent infinite loading
     authTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.error("Authentication check timed out after 5 seconds");
+      if (isMounted) {
+        console.error("ProtectedRoute: Authentication check timed out after 3 seconds");
         setAuthError("Authentication check timed out. Please try logging in again.");
         setLoading(false);
       }
-    }, 5000); // 5 second timeout - shorter for better UX
-
-    async function checkAuth() {
+    }, 3000); // 3 second timeout for better UX
+    
+    const checkAuth = async () => {
       try {
         console.log("ProtectedRoute: Checking authentication...");
         
-        // Simple direct session check
+        // Get the current session from Supabase
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        if (sessionError || !sessionData.session) {
-          console.log("No valid session found:", sessionError?.message || "Session missing");
+        // Clear timeout as we got a response
+        clearTimeout(authTimeout);
+        
+        if (sessionError) {
+          console.error("ProtectedRoute: Session error:", sessionError);
           
           if (isMounted) {
+            setAuthError(sessionError.message);
             setUser(null);
-            clearTimeout(authTimeout);
             setLoading(false);
           }
           return;
         }
         
-        // We have a valid session, set the user
+        // No session found
+        if (!sessionData.session) {
+          console.log("ProtectedRoute: No valid session found");
+          
+          if (isMounted) {
+            setUser(null);
+            setLoading(false);
+          }
+          return;
+        }
+        
+        // We have a valid session
+        console.log("ProtectedRoute: Valid session found");
+        
         if (isMounted) {
           setUser(sessionData.session.user);
           
           // Check subscription if needed
           if (requireSubscription) {
             try {
+              console.log("ProtectedRoute: Checking subscription...");
               const hasActiveSubscription = await isSubscribed();
+              
               if (isMounted) {
                 setHasSubscription(hasActiveSubscription);
               }
+              
+              console.log("ProtectedRoute: Subscription status:", hasActiveSubscription);
             } catch (subError) {
-              console.error("Subscription check error:", subError);
+              console.error("ProtectedRoute: Subscription check error:", subError);
+              
               if (isMounted) {
                 setHasSubscription(false);
               }
             }
           }
           
-          clearTimeout(authTimeout);
           setLoading(false);
         }
       } catch (error: any) {
-        console.error("Error checking authentication:", error);
+        console.error("ProtectedRoute: Authentication check error:", error);
+        
         if (isMounted) {
-          setAuthError(error.message || "Authentication error occurred");
+          setAuthError(error.message);
           setUser(null);
-          clearTimeout(authTimeout);
           setLoading(false);
-          toast.error("Authentication error. Please try logging in again.");
         }
       }
-    }
+    };
     
+    // Execute auth check
     checkAuth();
     
-    // Clean up function
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("ProtectedRoute: Auth state changed:", event);
+        
+        if (event === 'SIGNED_OUT') {
+          if (isMounted) {
+            setUser(null);
+            setHasSubscription(false);
+          }
+        } else if (event === 'SIGNED_IN' && session) {
+          if (isMounted) {
+            setUser(session.user);
+            
+            if (requireSubscription) {
+              const hasActiveSubscription = await isSubscribed();
+              if (isMounted) {
+                setHasSubscription(hasActiveSubscription);
+              }
+            }
+          }
+        }
+      }
+    );
+    
+    // Cleanup on unmount
     return () => {
+      console.log("ProtectedRoute: Unmounting, cleaning up...");
       isMounted = false;
       clearTimeout(authTimeout);
+      authListener.subscription.unsubscribe();
     };
-  }, [requireSubscription, hasLocalSession]);
+  }, [requireSubscription, location]);
 
   // Show error state
   if (authError) {
@@ -113,7 +153,12 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
             Refresh Page
           </button>
           <button
-            onClick={() => window.location.href = "/login"}
+            onClick={() => {
+              // Clear any stale session data
+              localStorage.removeItem('supabase.auth.token');
+              localStorage.removeItem('session_active');
+              window.location.href = "/login";
+            }}
             className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-colors"
           >
             Go to Login
@@ -124,10 +169,10 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
   }
 
   // Show loading state
-  if (loading && hasLocalSession) {
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
-        <div className="mb-4">Checking authentication...</div>
+        <div className="mb-4">Verifying authentication...</div>
         <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -135,18 +180,18 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
   
   // User is not logged in, redirect to login
   if (!user) {
-    console.log("No authenticated user, redirecting to login");
+    console.log("ProtectedRoute: No authenticated user, redirecting to login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   
   // User is logged in but doesn't have a subscription and it's required
   if (requireSubscription && !hasSubscription) {
-    console.log("User lacks subscription, redirecting to subscription page");
+    console.log("ProtectedRoute: User lacks subscription, redirecting to subscription page");
     return <Navigate to="/subscription" state={{ from: location }} replace />;
   }
   
   // User is authenticated and has required subscription or it's not required
-  console.log("Access granted to protected route");
+  console.log("ProtectedRoute: Access granted to protected route");
   return <>{children}</>;
 };
 
