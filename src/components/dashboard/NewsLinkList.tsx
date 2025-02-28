@@ -29,10 +29,27 @@ const NewsLinkList = () => {
         }
         
         const xmlText = await response.text();
+        console.log("Received RSS response:", xmlText.substring(0, 150) + "...");
+        
+        // Check if we got a valid XML response or if it's CloudFlare protection
+        if (xmlText.includes('challenge-platform') || xmlText.includes('<html>')) {
+          console.log("Received HTML instead of XML, falling back to mock data");
+          throw new Error('RSS feed returned HTML instead of XML');
+        }
+        
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
         
+        // Check for parsing errors
+        const parserError = xmlDoc.querySelector('parsererror');
+        if (parserError) {
+          console.error("XML parsing error:", parserError.textContent);
+          throw new Error('Failed to parse XML feed');
+        }
+        
         const items = xmlDoc.querySelectorAll("item");
+        console.log(`Found ${items.length} news items in the feed`);
+        
         const parsedItems: NewsItem[] = [];
         
         items.forEach((item, index) => {
@@ -52,6 +69,11 @@ const NewsLinkList = () => {
         });
         
         setNewsItems(parsedItems);
+        
+        if (parsedItems.length === 0) {
+          console.log("No items found in the feed, using fallback data");
+          throw new Error('No items found in feed');
+        }
       } catch (error) {
         console.error("Error fetching OpenAI news:", error);
         setError("Failed to load news feed");
