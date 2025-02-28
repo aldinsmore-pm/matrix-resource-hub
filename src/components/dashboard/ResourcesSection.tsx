@@ -16,6 +16,7 @@ const ResourcesSection = ({ initialResourceId, initialView }: ResourcesSectionPr
   const [editMode, setEditMode] = useState(false);
   const [createMode, setCreateMode] = useState(false);
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     // Handle initial resource and view if provided
@@ -37,6 +38,8 @@ const ResourcesSection = ({ initialResourceId, initialView }: ResourcesSectionPr
   const handleSaveComplete = () => {
     setEditMode(false);
     setCreateMode(false);
+    // Trigger a refresh of the resources list
+    setRefreshTrigger(prev => prev + 1);
     toast.success("Resource saved successfully!");
   };
 
@@ -81,10 +84,15 @@ const ResourcesSection = ({ initialResourceId, initialView }: ResourcesSectionPr
             
             <TabsContent value="my-resources" className="mt-0">
               <ResourcesList 
-                onEditResource={(id) => {
+                onCreateNew={() => {
+                  setCreateMode(true);
+                  setSelectedResourceId(null);
+                }}
+                onEdit={(id) => {
                   setSelectedResourceId(id);
                   setEditMode(true);
                 }}
+                refreshTrigger={refreshTrigger}
               />
             </TabsContent>
           </div>
