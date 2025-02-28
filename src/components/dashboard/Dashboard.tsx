@@ -21,9 +21,18 @@ interface Subscription {
   current_period_end: string;
 }
 
+interface Resource {
+  id: string;
+  title: string;
+  category: string;
+  created_at: string;
+  published: boolean;
+}
+
 const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [recentResources, setRecentResources] = useState<Resource[]>([]);
   const [activeSection, setActiveSection] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -53,6 +62,21 @@ const Dashboard = () => {
         // Get subscription info
         const userSubscription = await getSubscription();
         setSubscription(userSubscription);
+        
+        // Load recent resources from Supabase
+        console.log("Loading recent resources...");
+        const { data: resourcesData, error: resourcesError } = await supabase
+          .from('resources')
+          .select('id, title, category, created_at, published')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (resourcesError) {
+          console.error("Error loading resources:", resourcesError);
+          throw resourcesError;
+        }
+        
+        setRecentResources(resourcesData || []);
         console.log("Data loading complete");
       } catch (error: any) {
         console.error("Error loading user data:", error);
@@ -176,7 +200,7 @@ const Dashboard = () => {
             <h2 className="text-xl font-bold text-white">Dashboard</h2>
             <div className="text-sm text-gray-400">
               <span className="bg-green-500 w-2 h-2 rounded-full inline-block mr-2"></span>
-              <span className="mr-1">{subscription?.plan || "Subscribed"}</span>
+              <span className="mr-1">{subscription?.plan || "Free Plan"}</span>
             </div>
           </div>
         </header>
@@ -191,13 +215,13 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <DashboardCard 
                   title="Resources Available" 
-                  value="24" 
-                  description="Premium AI resources"
+                  value={recentResources.length.toString()} 
+                  description="AI resources"
                   color="bg-matrix-primary"
                 />
                 <DashboardCard 
                   title="Documents" 
-                  value="12" 
+                  value="0" 
                   description="Saved documents"
                   color="bg-matrix-secondary"
                 />
@@ -212,23 +236,24 @@ const Dashboard = () => {
               <div className="mt-8">
                 <h4 className="text-lg font-semibold mb-4">Recent Resources</h4>
                 <div className="card-container p-4 rounded-lg">
-                  <div className="divide-y divide-matrix-border">
-                    <ResourceItem 
-                      title="AI Implementation Framework" 
-                      category="Framework"
-                      date="Accessed 2 days ago"
-                    />
-                    <ResourceItem 
-                      title="Machine Learning ROI Calculator" 
-                      category="Tool"
-                      date="Accessed 3 days ago"
-                    />
-                    <ResourceItem 
-                      title="LLM Integration Toolkit" 
-                      category="Toolkit"
-                      date="Accessed 5 days ago"
-                    />
-                  </div>
+                  {recentResources.length > 0 ? (
+                    <div className="divide-y divide-matrix-border">
+                      {recentResources.map((resource) => (
+                        <ResourceItem 
+                          key={resource.id}
+                          title={resource.title}
+                          category={resource.category}
+                          date={formatDate(resource.created_at)}
+                          published={resource.published}
+                          onClick={() => navigate(`/dashboard/resources/${resource.id}`)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-400">
+                      <p>No resources found. Create your first resource in the Resources section.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -248,6 +273,22 @@ const Dashboard = () => {
       </div>
     </div>
   );
+};
+
+// Helper function to format dates
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return "Created today";
+  } else if (diffDays === 1) {
+    return "Created yesterday";
+  } else {
+    return `Created ${diffDays} days ago`;
+  }
 };
 
 const SidebarItem = ({ 
@@ -301,11 +342,15 @@ const DashboardCard = ({
 const ResourceItem = ({ 
   title, 
   category, 
-  date 
+  date,
+  published,
+  onClick
 }: { 
   title: string;
   category: string;
   date: string;
+  published: boolean;
+  onClick: () => void;
 }) => {
   return (
     <div className="py-3">
@@ -315,9 +360,14 @@ const ResourceItem = ({
           <div className="flex items-center mt-1">
             <span className="text-xs px-2 py-0.5 bg-matrix-muted text-matrix-primary rounded">{category}</span>
             <span className="text-xs text-gray-500 ml-2">{date}</span>
+            {published ? (
+              <span className="text-xs px-2 py-0.5 bg-green-900/30 text-green-400 rounded ml-2">Published</span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 bg-yellow-900/30 text-yellow-400 rounded ml-2">Draft</span>
+            )}
           </div>
         </div>
-        <button className="text-matrix-primary hover:underline text-sm">View</button>
+        <button onClick={onClick} className="text-matrix-primary hover:underline text-sm">View</button>
       </div>
     </div>
   );
