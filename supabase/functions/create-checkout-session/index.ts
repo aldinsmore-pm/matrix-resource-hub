@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@13.9.0?target=deno';
 
@@ -40,30 +39,21 @@ serve(async (req) => {
     
     console.log(`Creating checkout session for ${plan} plan, billing cycle: ${billingCycle}`);
     
-    // Map plan names to price IDs (these would be your actual Stripe price IDs)
-    const priceMap = {
-      Starter: {
-        monthly: 'price_starter_monthly',
-        annually: 'price_starter_annually'
-      },
-      Professional: {
-        monthly: 'price_professional_monthly',
-        annually: 'price_professional_annually'
-      },
-      Enterprise: {
-        monthly: 'price_enterprise_monthly',
-        annually: 'price_enterprise_annually'
-      }
+    // Currently, only an annual price is available for product prod_RrGq7yAIjtfBHy
+    // Using the correct price ID provided
+    const productPrices = {
+      annually: 'price_1QxYIYRdb4qpGphFhXDsnDLT' // Correct annual price ID
     };
 
-    // Get the appropriate price ID based on plan and billing cycle
-    const priceId = priceMap[plan as keyof typeof priceMap]?.[billingCycle as 'monthly' | 'annually'];
+    // Always use annual billing since that's the only option available
+    const priceId = productPrices.annually;
     
-    if (!priceId) {
-      throw new Error(`Invalid plan (${plan}) or billing cycle (${billingCycle})`);
+    // Inform if user attempted to use monthly billing
+    if (billingCycle === 'monthly') {
+      console.log('Monthly billing requested but only annual billing is available. Defaulting to annual billing.');
     }
 
-    // Create checkout session
+    // Create checkout session with the product linked to the price
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
@@ -77,8 +67,9 @@ serve(async (req) => {
       client_reference_id: userId,
       metadata: {
         userId,
-        plan,
-        billingCycle
+        plan, // Keep the plan name for reference
+        billingCycle: 'annually', // Always annual since that's the only option
+        productId: 'prod_RrGq7yAIjtfBHy' // Using the correct product ID
       }
     });
 

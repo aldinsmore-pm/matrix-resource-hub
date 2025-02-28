@@ -1,4 +1,3 @@
-
 import { Check } from "lucide-react";
 import { useState } from "react";
 
@@ -109,12 +108,9 @@ const PricingTable = ({
         <div className="inline-flex p-1 rounded-lg bg-matrix-muted border border-matrix-border">
           <button
             onClick={() => handleBillingCycleChange("monthly")}
-            disabled={disabled}
-            className={`px-4 py-2 text-sm rounded-md transition-all ${
-              effectiveBillingCycle === "monthly"
-                ? "bg-matrix-bg text-matrix-primary"
-                : "text-gray-400 hover:text-white"
-            } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={true}
+            className={`px-4 py-2 text-sm rounded-md transition-all text-gray-500 opacity-50 cursor-not-allowed`}
+            title="Only annual billing is currently available"
           >
             Monthly
           </button>
@@ -127,8 +123,11 @@ const PricingTable = ({
                 : "text-gray-400 hover:text-white"
             } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            Annually <span className="text-xs text-matrix-secondary">Save 20%</span>
+            Annually <span className="text-xs text-matrix-secondary">Only Option</span>
           </button>
+        </div>
+        <div className="ml-2 text-xs text-amber-400 flex items-center">
+          Note: Only annual billing is currently available
         </div>
       </div>
 
