@@ -40,6 +40,18 @@ const Dashboard = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  
+  // Animation states
+  const [animationComplete, setAnimationComplete] = useState(false);
+
+  useEffect(() => {
+    // Set animation flag after a delay to create game UI feel
+    const timer = setTimeout(() => {
+      setAnimationComplete(true);
+    }, 800);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     async function loadUserData() {
@@ -111,7 +123,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
-        <div className="mb-4">Loading dashboard data...</div>
+        <div className="mb-4 text-matrix-primary text-xl">Initializing...</div>
         <div className="w-12 h-12 border-4 border-matrix-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -124,7 +136,7 @@ const Dashboard = () => {
         <div className="mb-4">{loadError}</div>
         <button 
           onClick={handleLogout}
-          className="px-4 py-2 bg-matrix-primary text-black rounded"
+          className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-all duration-300"
         >
           Return to Login
         </button>
@@ -138,7 +150,7 @@ const Dashboard = () => {
         <div className="text-xl mb-4">User not found.</div>
         <button 
           onClick={handleLogout}
-          className="px-4 py-2 bg-matrix-primary text-black rounded"
+          className="px-4 py-2 bg-matrix-primary text-black rounded hover:bg-opacity-90 transition-all duration-300"
         >
           Return to Login
         </button>
@@ -148,23 +160,24 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-matrix-bg flex">
-      {/* Sidebar */}
+      {/* Game-style sidebar - animation delay */}
       <div 
-        className={`bg-matrix-bg-alt border-r border-matrix-border p-4 transition-all duration-300 ${
+        className={`bg-matrix-bg-alt/70 backdrop-blur-md border-r border-matrix-border p-4 transition-all duration-500 ${
           sidebarOpen ? 'w-64' : 'w-16'
-        } fixed h-full z-10`}
+        } fixed h-full z-10 ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-x-10'}`}
+        style={{ boxShadow: '0 0 20px rgba(139, 92, 246, 0.1)' }}
       >
         <div className="flex items-center justify-between mb-8">
           {sidebarOpen ? (
-            <h1 className="text-xl font-bold text-matrix-primary">
+            <h1 className="text-xl font-bold text-matrix-primary animate-pulse">
               AI <span className="text-white">Unlocked</span>
             </h1>
           ) : (
-            <span className="text-xl font-bold text-matrix-primary">AI</span>
+            <span className="text-xl font-bold text-matrix-primary animate-pulse">AI</span>
           )}
           <button 
             onClick={toggleSidebar}
-            className="p-1 rounded-md hover:bg-matrix-muted text-matrix-primary"
+            className="p-1 rounded-md hover:bg-matrix-muted text-matrix-primary transition-all duration-300"
           >
             <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${sidebarOpen ? '' : 'transform rotate-180'}`} />
           </button>
@@ -221,17 +234,18 @@ const Dashboard = () => {
         </nav>
       </div>
       
-      {/* Main content */}
+      {/* Main content - game UI with left and right sections */}
       <div className={`flex-1 transition-all duration-300 overflow-auto ${
         sidebarOpen ? 'ml-64' : 'ml-16'
       }`}>
-        <header className="bg-matrix-bg-alt border-b border-matrix-border p-4">
+        <header className="bg-matrix-bg-alt/60 backdrop-blur-md border-b border-matrix-border p-4 transition-all duration-500 
+          ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-10'}">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               {!sidebarOpen && (
                 <button 
                   onClick={toggleSidebar} 
-                  className="mr-3 hover:bg-matrix-muted p-1 rounded-md"
+                  className="mr-3 hover:bg-matrix-muted p-1 rounded-md transition-all duration-300"
                 >
                   <Menu className="w-5 h-5 text-matrix-primary" />
                 </button>
@@ -248,11 +262,13 @@ const Dashboard = () => {
         <main className="p-6">
           {activeSection === "overview" && (
             <div className="space-y-6">
-              <h3 className="text-xl font-bold mb-4">
+              <h3 className={`text-xl font-bold mb-4 transition-all duration-700 delay-100 
+                ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-5'}`}>
                 Welcome, {profile.first_name || profile.email.split('@')[0]}
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 transition-all duration-700 delay-200
+                ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-5'}`}>
                 <DashboardCard 
                   title="Resources Available" 
                   value={recentResources.length.toString()} 
@@ -273,24 +289,32 @@ const Dashboard = () => {
                 />
               </div>
               
-              {/* Split layout for resources and news links */}
+              {/* Game UI Split layout for resources and news links */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                <div className="card-container p-5 rounded-lg">
+                <div className={`card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
+                  transition-all duration-700 delay-300 transform hover:scale-[1.01] hover:border-matrix-primary/50
+                  ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-x-5'}`}
+                  style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
                   <ResourcesLinkList />
                 </div>
                 
-                <div className="card-container p-5 rounded-lg">
+                <div className={`card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
+                  transition-all duration-700 delay-400 transform hover:scale-[1.01] hover:border-matrix-primary/50
+                  ${animationComplete ? 'opacity-100' : 'opacity-0 translate-x-5'}`}
+                  style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
                   <NewsLinkList />
                 </div>
               </div>
               
-              {/* Your content links */}
-              <div className="mt-8">
+              {/* Your content links - game UI style */}
+              <div className={`mt-8 transition-all duration-700 delay-500
+                ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
                 <h4 className="text-lg font-semibold mb-4">Your Content</h4>
-                <div className="card-container p-4 rounded-lg">
+                <div className="card-container p-4 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30"
+                  style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
                   {recentResources.length > 0 ? (
                     <div className="divide-y divide-matrix-border">
-                      {recentResources.map((resource) => (
+                      {recentResources.map((resource, index) => (
                         <ResourceItem 
                           key={resource.id}
                           title={resource.title}
@@ -298,6 +322,8 @@ const Dashboard = () => {
                           date={formatDate(resource.created_at)}
                           published={resource.published}
                           onClick={() => navigate(`/dashboard/resources/${resource.id}`)}
+                          delay={index * 100}
+                          animationComplete={animationComplete}
                         />
                       ))}
                     </div>
@@ -311,11 +337,18 @@ const Dashboard = () => {
             </div>
           )}
           
-          {activeSection === "resources" && <ResourcesSection />}
+          {activeSection === "resources" && (
+            <div className={`transition-all duration-500 
+              ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
+              <ResourcesSection />
+            </div>
+          )}
           
           {activeSection !== "overview" && activeSection !== "resources" && (
-            <div className="min-h-[400px] flex items-center justify-center">
-              <div className="text-center">
+            <div className={`min-h-[400px] flex items-center justify-center transition-all duration-500
+              ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
+              <div className="text-center p-8 card-container rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30"
+                style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
                 <h3 className="text-xl font-bold mb-2">{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</h3>
                 <p className="text-gray-400">This section is under development.</p>
               </div>
@@ -359,15 +392,18 @@ const SidebarItem = ({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 w-full rounded transition-colors ${
+      className={`flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 w-full rounded transition-all duration-300 ${
         active 
-          ? "bg-matrix-primary bg-opacity-10 text-matrix-primary" 
+          ? "bg-matrix-primary/20 text-matrix-primary" 
           : "text-gray-400 hover:text-white hover:bg-matrix-muted"
       }`}
       title={collapsed ? label : undefined}
     >
       <span className={collapsed ? '' : 'mr-3'}>{icon}</span>
       {!collapsed && <span>{label}</span>}
+      {active && !collapsed && (
+        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-matrix-primary"></span>
+      )}
     </button>
   );
 };
@@ -384,7 +420,9 @@ const DashboardCard = ({
   color: string;
 }) => {
   return (
-    <div className="card-container p-5 rounded-lg">
+    <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
+      transition-all duration-300 transform hover:scale-[1.03] hover:border-matrix-primary/50"
+      style={{ boxShadow: '0 0 15px rgba(139, 92, 246, 0.05)' }}>
       <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-3`}>
         <span className="text-black font-bold">{value}</span>
       </div>
@@ -399,16 +437,22 @@ const ResourceItem = ({
   category, 
   date,
   published,
-  onClick
+  onClick,
+  delay = 0,
+  animationComplete
 }: { 
   title: string;
   category: string;
   date: string;
   published: boolean;
   onClick: () => void;
+  delay?: number;
+  animationComplete: boolean;
 }) => {
   return (
-    <div className="py-3">
+    <div className={`py-3 transition-all duration-700 hover:bg-matrix-muted/20 px-2 rounded-md 
+      ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-3'}`}
+      style={{ transitionDelay: `${delay + 500}ms` }}>
       <div className="flex justify-between">
         <div>
           <h5 className="font-medium text-white">{title}</h5>
@@ -422,7 +466,12 @@ const ResourceItem = ({
             )}
           </div>
         </div>
-        <button onClick={onClick} className="text-matrix-primary hover:underline text-sm">View</button>
+        <button 
+          onClick={onClick} 
+          className="text-matrix-primary hover:underline text-sm transition-all duration-300 hover:text-matrix-primary/80"
+        >
+          View
+        </button>
       </div>
     </div>
   );
