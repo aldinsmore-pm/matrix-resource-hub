@@ -26,7 +26,38 @@ const Subscription = () => {
         
         // Handle Stripe payment success or cancel
         const paymentStatus = searchParams.get('payment_status');
-        if (paymentStatus === 'success') {
+        const sessionId = searchParams.get('session_id');
+        
+        if (paymentStatus === 'success' && sessionId) {
+          setLoading(true);
+          toast.info('Verifying your payment...');
+          
+          try {
+            // Verify the session with our edge function
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-session', {
+              body: { 
+                sessionId,
+                userId: data.user.id
+              },
+            });
+            
+            if (verifyError) {
+              throw new Error(verifyError.message || "Failed to verify payment");
+            }
+            
+            if (verifyData.success) {
+              toast.success('Your subscription was successful!');
+              navigate("/dashboard");
+              return;
+            } else {
+              throw new Error("Payment verification failed");
+            }
+          } catch (verifyError) {
+            console.error("Payment verification error:", verifyError);
+            toast.error('There was a problem verifying your payment. Please contact support.');
+          }
+        } else if (paymentStatus === 'success') {
+          // Legacy success without session ID
           toast.success('Your subscription was successful!');
           navigate("/dashboard");
           return;

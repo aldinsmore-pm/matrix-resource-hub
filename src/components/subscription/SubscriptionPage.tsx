@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 const SubscriptionPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annually">("monthly");
   const navigate = useNavigate();
 
   // Function to handle subscription selection
@@ -29,8 +30,11 @@ const SubscriptionPage = () => {
           plan,
           userId: userData.user.id,
           email: userData.user.email,
-          returnUrl: window.location.origin + '/dashboard',
+          returnUrl: window.location.origin + '/subscription',
         },
+        headers: {
+          'X-Billing-Cycle': billingCycle
+        }
       });
       
       if (error) {
@@ -63,7 +67,12 @@ const SubscriptionPage = () => {
       </div>
       
       <div className="mb-8">
-        <PricingTable onSubscribe={handleSubscribe} disabled={isLoading} />
+        <PricingTable 
+          onSubscribe={handleSubscribe} 
+          disabled={isLoading} 
+          billingCycle={billingCycle}
+          onBillingCycleChange={setBillingCycle}
+        />
       </div>
       
       <div className="max-w-2xl mx-auto bg-matrix-muted p-6 rounded-lg border border-matrix-border mt-12">

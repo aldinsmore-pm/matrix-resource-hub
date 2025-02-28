@@ -25,38 +25,62 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
 
+    console.log(`Creating checkout session for user ${userId}, plan ${plan}`);
+
     // Initialize Stripe with the secret key
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
     });
 
-    // Define price IDs for each plan
-    // You'll need to create these products and prices in Stripe dashboard
-    const PRICE_IDS: Record<string, string> = {
-      "Starter": Deno.env.get("STRIPE_STARTER_PRICE_ID") || "",
-      "Professional": Deno.env.get("STRIPE_PROFESSIONAL_PRICE_ID") || "",
-      "Enterprise": Deno.env.get("STRIPE_ENTERPRISE_PRICE_ID") || "",
+    // Define price mapping logic - both as fallbacks and from env variables
+    const PRICE_MAPPING = {
+      "Starter": {
+        monthly: "price_1ParIkJ4RtGdwHKhTlKJxZPJ", // Example fallback price ID
+        annually: "price_1ParJVJ4RtGdwHKhVQYqy1Pu" // Example fallback price ID
+      },
+      "Professional": {
+        monthly: "price_1ParL2J4RtGdwHKhw1GKGWky", // Example fallback price ID
+        annually: "price_1ParLKJ4RtGdwHKhK0cwyvCz" // Example fallback price ID
+      },
+      "Enterprise": {
+        monthly: "price_1ParLtJ4RtGdwHKhBqrIEYvJ", // Example fallback price ID
+        annually: "price_1ParM6J4RtGdwHKhDIQi9XsK" // Example fallback price ID
+      }
     };
 
-    if (!PRICE_IDS[plan]) {
-      throw new Error(`Invalid plan selected: ${plan}`);
+    // Determine the billing cycle from the metadata (default to monthly)
+    const billing = req.headers.get("X-Billing-Cycle") || "monthly";
+    
+    // Get the price ID
+    let priceId = PRICE_MAPPING[plan]?.[billing] || PRICE_MAPPING[plan]?.monthly;
+
+    // Override with environment variables if available
+    if (billing === "monthly") {
+      if (plan === "Starter" && Deno.env.get("STRIPE_STARTER_PRICE_ID")) {
+        priceId = Deno.env.get("STRIPE_STARTER_PRICE_ID") || "";
+      } else if (plan === "Professional" && Deno.env.get("STRIPE_PROFESSIONAL_PRICE_ID")) {
+        priceId = Deno.env.get("STRIPE_PROFESSIONAL_PRICE_ID") || "";
+      } else if (plan === "Enterprise" && Deno.env.get("STRIPE_ENTERPRISE_PRICE_ID")) {
+        priceId = Deno.env.get("STRIPE_ENTERPRISE_PRICE_ID") || "";
+      }
     }
 
-    // Create a Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    if (!priceId) {
+      throw new Error(`Could not determine price ID for plan: ${plan}`);
+    }
+
+    console.log(`Using price ID: ${priceId} for plan ${plan}`);
 
     // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
-          price: PRICE_IDS[plan],
+          price: priceId,
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${returnUrl}?payment_status=success`,
+      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}&payment_status=success`,
       cancel_url: `${returnUrl}?payment_status=cancelled`,
       customer_email: email,
       client_reference_id: userId,
@@ -65,6 +89,8 @@ serve(async (req) => {
         plan,
       },
     });
+
+    console.log(`Created checkout session: ${session.id} for user ${userId}`);
 
     // Return the session URL for redirect
     return new Response(
@@ -75,6 +101,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error(`Error creating checkout session: ${error.message}`);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
