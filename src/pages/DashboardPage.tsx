@@ -12,82 +12,76 @@ const DashboardPage = () => {
   const [authChecking, setAuthChecking] = useState(true);
 
   useEffect(() => {
-    // Check authentication status to handle any issues
-    let authTimeout: NodeJS.Timeout;
     let isMounted = true;
+    let authTimeout = null;
+    
+    // Immediately check if we have a session stored locally
+    const localSession = localStorage.getItem('supabase.auth.token');
+    if (!localSession) {
+      console.log("No local session found, redirecting to login...");
+      navigate("/login");
+      return;
+    }
 
     async function checkAuth() {
       try {
-        setAuthChecking(true);
-        
-        // Set a timeout for this specific auth check
-        authTimeout = setTimeout(() => {
-          if (isMounted) {
+        // Set a shorter timeout
+        if (isMounted) {
+          authTimeout = setTimeout(() => {
             console.error("DashboardPage: Authentication check timed out");
             toast.error("Authentication check timed out, redirecting to login...");
             navigate("/login");
-          }
-        }, 5000); // 5 second timeout
+          }, 3000); // 3 second timeout
+        }
         
         const { data, error } = await supabase.auth.getSession();
         
+        // Clear timeout as soon as we get a response
+        if (authTimeout) clearTimeout(authTimeout);
+        
         if (error) {
           console.error("Error checking session:", error);
-          toast.error("Authentication error. Redirecting to login...");
-          navigate("/login");
+          if (isMounted) {
+            toast.error("Authentication error. Redirecting to login...");
+            navigate("/login");
+          }
           return;
         }
         
         if (!data.session) {
           console.log("No active session found. Redirecting to login...");
-          navigate("/login");
+          if (isMounted) {
+            navigate("/login");
+          }
           return;
         }
-        
-        // Clear timeout once we have a result
-        clearTimeout(authTimeout);
         
         // Session is valid, proceed with dashboard
         if (isMounted) {
           setAuthChecking(false);
+          
+          // Animation delay for the game UI feel
+          setTimeout(() => {
+            if (isMounted) {
+              setLoaded(true);
+            }
+          }, 300);
         }
       } catch (error) {
+        if (authTimeout) clearTimeout(authTimeout);
         console.error("Error in auth check:", error);
-        toast.error("Authentication error. Redirecting to login...");
-        navigate("/login");
+        if (isMounted) {
+          toast.error("Authentication error. Redirecting to login...");
+          navigate("/login");
+        }
       }
     }
     
     checkAuth();
     
-    // Set up auth listener to handle session changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (isMounted) {
-        clearTimeout(authTimeout);
-        
-        console.log("Dashboard auth state changed:", event);
-        
-        if (event === 'SIGNED_OUT' || !session) {
-          navigate("/login");
-          return;
-        }
-        
-        setAuthChecking(false);
-      }
-    });
-    
-    // Animation delay for the game UI feel - only if auth passes
-    const animationTimer = setTimeout(() => {
-      if (isMounted) {
-        setLoaded(true);
-      }
-    }, 300);
-
     return () => {
       isMounted = false;
-      clearTimeout(authTimeout);
-      clearTimeout(animationTimer);
-      authListener.subscription.unsubscribe();
+      if (authTimeout) clearTimeout(authTimeout);
     };
   }, [navigate]);
 

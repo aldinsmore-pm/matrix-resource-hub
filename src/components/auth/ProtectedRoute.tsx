@@ -16,64 +16,56 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
   const [hasSubscription, setHasSubscription] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Immediately check for session in localStorage to avoid showing the loading state unnecessarily
+  const hasLocalSession = Boolean(localStorage.getItem('supabase.auth.token'));
+  
   useEffect(() => {
+    // If no local session exists, skip the auth check
+    if (!hasLocalSession) {
+      setLoading(false);
+      return;
+    }
+    
     let isMounted = true;
     let authTimeout: NodeJS.Timeout;
     
     // Set a timeout to prevent infinite loading
     authTimeout = setTimeout(() => {
       if (isMounted && loading) {
-        console.error("Authentication check timed out after 10 seconds");
-        setAuthError("Authentication check timed out. Please try refreshing the page.");
+        console.error("Authentication check timed out after 5 seconds");
+        setAuthError("Authentication check timed out. Please try logging in again.");
         setLoading(false);
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // 5 second timeout - shorter for better UX
 
     async function checkAuth() {
       try {
         console.log("ProtectedRoute: Checking authentication...");
         
-        // Directly check the session without refreshing first
+        // Simple direct session check
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          throw sessionError;
-        }
-
-        // Check if we have a session
-        if (!sessionData.session) {
-          console.log("No active session found");
+        if (sessionError || !sessionData.session) {
+          console.log("No valid session found:", sessionError?.message || "Session missing");
+          
           if (isMounted) {
             setUser(null);
-            setLoading(false);
             clearTimeout(authTimeout);
+            setLoading(false);
           }
           return;
         }
         
-        // Session exists, get the user
-        console.log("Session found, getting user...");
-        const { data, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          console.error("Auth error:", error);
-          throw error;
-        }
-        
-        console.log("Auth data received:", data.user ? "User authenticated" : "No user");
-        
+        // We have a valid session, set the user
         if (isMounted) {
-          setUser(data.user);
+          setUser(sessionData.session.user);
           
-          // If user is authenticated and subscription is required, check subscription
-          if (data.user && requireSubscription) {
-            console.log("Checking subscription status...");
+          // Check subscription if needed
+          if (requireSubscription) {
             try {
-              const subscribed = await isSubscribed();
-              console.log("Subscription status:", subscribed ? "Active" : "Inactive");
+              const hasActiveSubscription = await isSubscribed();
               if (isMounted) {
-                setHasSubscription(subscribed);
+                setHasSubscription(hasActiveSubscription);
               }
             } catch (subError) {
               console.error("Subscription check error:", subError);
@@ -100,56 +92,12 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
     
     checkAuth();
     
-    // Set up auth state change listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event);
-        
-        if (isMounted) {
-          clearTimeout(authTimeout);
-          
-          if (event === 'SIGNED_OUT') {
-            setUser(null);
-            setHasSubscription(false);
-            setLoading(false);
-            return;
-          }
-          
-          if (session) {
-            setUser(session.user || null);
-            
-            if (session.user && requireSubscription) {
-              try {
-                const subscribed = await isSubscribed();
-                if (isMounted) {
-                  setHasSubscription(subscribed);
-                  setLoading(false);
-                }
-              } catch (error) {
-                console.error("Error checking subscription on auth change:", error);
-                if (isMounted) {
-                  setHasSubscription(false);
-                  setLoading(false);
-                }
-              }
-            } else {
-              setLoading(false);
-            }
-          } else {
-            setUser(null);
-            setLoading(false);
-          }
-        }
-      }
-    );
-    
+    // Clean up function
     return () => {
       isMounted = false;
       clearTimeout(authTimeout);
-      // Clean up the subscription
-      authListener.subscription.unsubscribe();
     };
-  }, [requireSubscription, location.pathname]);
+  }, [requireSubscription, hasLocalSession]);
 
   // Show error state
   if (authError) {
@@ -176,7 +124,7 @@ const ProtectedRoute = ({ children, requireSubscription = true }: ProtectedRoute
   }
 
   // Show loading state
-  if (loading) {
+  if (loading && hasLocalSession) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-matrix-bg">
         <div className="mb-4">Checking authentication...</div>
