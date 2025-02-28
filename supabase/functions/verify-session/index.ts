@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.32.0";
-import Stripe from "https://esm.sh/stripe@13.9.0?target=deno";
+import Stripe from 'https://esm.sh/stripe@13.9.0?target=deno';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.31.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,10 +9,23 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Initialize Stripe
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+  apiVersion: '2023-10-16',
+});
+
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -26,85 +39,59 @@ serve(async (req) => {
       throw new Error('User ID is required');
     }
     
-    console.log(`Verifying session ${sessionId} for user ${userId}`);
+    console.log(`Verifying checkout session: ${sessionId} for user: ${userId}`);
     
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
-    });
-    
-    // Initialize Supabase client with service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    );
-    
-    // Retrieve the session from Stripe
+    // Retrieve the session to verify its status
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     
-    if (!session) {
-      throw new Error('Invalid session ID');
+    // Verify that the session is completed and has successful payment
+    if (session.status !== 'complete' || session.payment_status !== 'paid') {
+      throw new Error('Payment was not successful');
     }
     
-    if (session.payment_status !== 'paid') {
-      throw new Error('Payment not completed');
-    }
-    
-    // Verify that this session belongs to the user
+    // Verify that the user ID matches
     if (session.client_reference_id !== userId) {
-      throw new Error('Session does not belong to this user');
+      throw new Error('User ID mismatch');
     }
     
-    console.log(`Session verified for user ${userId}`);
+    console.log('Payment verification successful');
     
-    // Extract subscription details from the session
-    const subscriptionId = session.subscription as string;
-    const customerId = session.customer as string;
+    // Get subscription ID from the session
+    const subscriptionId = session.subscription;
     
     if (!subscriptionId) {
-      throw new Error('No subscription ID found in session');
+      throw new Error('No subscription was created');
     }
     
-    // Get subscription details from Stripe
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    // Get subscription details
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
     
-    if (!subscription) {
-      throw new Error('Invalid subscription ID');
-    }
-    
-    // Extract plan details from metadata or subscription
-    const plan = session.metadata?.plan || 'unknown';
-    const billingCycle = session.metadata?.billingCycle || 'monthly';
-    
-    // Calculate current period dates
-    const currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
-    const currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
-    
-    // Save subscription in Supabase
-    const { data, error } = await supabaseAdmin
+    // Save subscription information to the database
+    const { error: dbError } = await supabase
       .from('subscriptions')
-      .upsert({
-        id: subscriptionId,
+      .insert({
+        id: subscription.id,
         user_id: userId,
-        customer_id: customerId,
-        plan: plan,
         status: subscription.status,
-        billing_cycle: billingCycle,
-        current_period_start: currentPeriodStart,
-        current_period_end: currentPeriodEnd,
-        cancel_at_period_end: subscription.cancel_at_period_end,
-      })
-      .select();
+        plan: session.metadata?.plan || 'unknown',
+        stripe_customer_id: session.customer,
+        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        cancel_at_period_end: subscription.cancel_at_period_end
+      });
     
-    if (error) {
-      console.error('Error saving subscription:', error);
-      throw error;
+    if (dbError) {
+      console.error(`Error saving subscription to database: ${dbError.message}`);
+      throw new Error('Failed to save subscription information');
     }
     
-    console.log(`Subscription saved: ${subscriptionId}`);
+    console.log(`Subscription saved to database: ${subscription.id}`);
     
     return new Response(
-      JSON.stringify({ success: true, subscription: data[0] }),
+      JSON.stringify({ 
+        success: true,
+        message: 'Payment verified and subscription activated'
+      }),
       { 
         status: 200, 
         headers: { 
@@ -113,9 +100,9 @@ serve(async (req) => {
         } 
       }
     );
-    
+
   } catch (error) {
-    console.error(`Error verifying session: ${error.message}`);
+    console.error(`Error verifying checkout session: ${error.message}`);
     
     return new Response(
       JSON.stringify({ 
