@@ -16,9 +16,8 @@ const NotFound = () => {
     // Check if this is a direct page refresh/load from browser
     // If it's a direct route that should exist in the app, redirect to root
     // and let React Router handle it
-    const isDirectNavigation = !window.performance
-      .getEntriesByType("navigation")
-      .some((nav) => nav.type === "navigate");
+    const navEntries = window.performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    const isDirectNavigation = !navEntries.some((nav) => nav.type === "navigate");
 
     if (isDirectNavigation && location.pathname !== "/") {
       // Store the attempted path to redirect after initial load
