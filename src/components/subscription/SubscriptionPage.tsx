@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PricingTable from "../PricingTable";
-import { createSubscription } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 const SubscriptionPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,23 +14,38 @@ const SubscriptionPage = () => {
     setIsLoading(true);
     
     try {
-      // In a real app, this would redirect to payment processing
-      toast.success(`Processing ${plan} plan subscription...`);
+      // Get user information
+      const { data: userData } = await supabase.auth.getUser();
       
-      // Create a subscription record in the database
-      const subscription = await createSubscription(plan, 30); // 30-day subscription
-      
-      if (!subscription) {
-        throw new Error("Failed to create subscription");
+      if (!userData.user) {
+        throw new Error("You must be logged in to subscribe");
       }
       
-      toast.success(`Successfully subscribed to ${plan} plan!`);
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1500);
+      toast.info(`Processing ${plan} plan subscription...`);
+      
+      // Call our Supabase Edge Function to create a Stripe checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { 
+          plan,
+          userId: userData.user.id,
+          email: userData.user.email,
+          returnUrl: window.location.origin + '/dashboard',
+        },
+      });
+      
+      if (error) {
+        throw new Error(error.message || "Failed to create checkout session");
+      }
+      
+      if (!data?.url) {
+        throw new Error("No checkout URL returned");
+      }
+      
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+      
     } catch (error: any) {
       toast.error(error.message || "Failed to process subscription. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

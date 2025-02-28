@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SubscriptionPage from "../components/subscription/SubscriptionPage";
@@ -9,6 +10,7 @@ import { supabase, isSubscribed } from "../lib/supabase";
 const Subscription = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     async function checkAuth() {
@@ -20,6 +22,16 @@ const Subscription = () => {
           // If not logged in, redirect to login
           navigate("/login");
           return;
+        }
+        
+        // Handle Stripe payment success or cancel
+        const paymentStatus = searchParams.get('payment_status');
+        if (paymentStatus === 'success') {
+          toast.success('Your subscription was successful!');
+          navigate("/dashboard");
+          return;
+        } else if (paymentStatus === 'cancelled') {
+          toast.error('Payment was cancelled. You can try again anytime.');
         }
         
         // Check if user already has an active subscription
@@ -36,7 +48,7 @@ const Subscription = () => {
     }
     
     checkAuth();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
