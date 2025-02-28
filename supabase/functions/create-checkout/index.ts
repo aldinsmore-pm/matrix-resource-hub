@@ -63,16 +63,23 @@ serve(async (req) => {
     console.log('Product ID:', productId)
     console.log('Return URL:', returnUrl)
     
+    // Create a new product if one doesn't exist
+    // This is for testing purposes - in production, you'd use existing products
+    const price = await stripe.prices.create({
+      currency: 'usd',
+      unit_amount: 9900, // $99.00
+      product_data: {
+        name: 'Aire Access',
+        description: 'Lifetime access to Aire platform',
+      },
+    });
+    
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product: productId,
-            unit_amount: 9900, // $99.00
-          },
+          price: price.id,
           quantity: 1,
         },
       ],
@@ -87,6 +94,7 @@ serve(async (req) => {
     })
     
     console.log('Checkout session created:', session.id)
+    console.log('Checkout URL:', session.url)
     
     // Return the checkout URL to the client
     return new Response(

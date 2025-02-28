@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
@@ -31,14 +30,12 @@ const SubscriptionPage = () => {
       }
       
       console.log("Calling create-checkout function with:", {
-        productId: "prod_RrL1RLRnascFV8",
         returnUrl
       });
       
       // Use the Supabase client to call the Edge Function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
-          productId: "prod_RrL1RLRnascFV8",
           returnUrl
         }
       });
