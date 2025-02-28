@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Link as LinkIcon, Trash2, PencilLine, Plus, Search, X, Link as LinkIconFull } from "lucide-react";
+import { Link as LinkIcon, Trash2, PencilLine, Plus, Search, X, Link as LinkIconFull, ExternalLink } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner";
 
