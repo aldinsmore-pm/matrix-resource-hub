@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut } from "lucide-react";
 import { supabase, getProfile, getSubscription } from "../../lib/supabase";
 import ResourcesSection from "./ResourcesSection";
+import ResourcesLinkList from "./ResourcesLinkList";
+import NewsLinkList from "./NewsLinkList";
 import { toast } from "sonner";
 
 interface Profile {
@@ -233,8 +235,20 @@ const Dashboard = () => {
                 />
               </div>
               
+              {/* New split layout for resources and news links */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                <div className="card-container p-5 rounded-lg">
+                  <ResourcesLinkList />
+                </div>
+                
+                <div className="card-container p-5 rounded-lg">
+                  <NewsLinkList />
+                </div>
+              </div>
+              
+              {/* Your content links */}
               <div className="mt-8">
-                <h4 className="text-lg font-semibold mb-4">Recent Resources</h4>
+                <h4 className="text-lg font-semibold mb-4">Your Content</h4>
                 <div className="card-container p-4 rounded-lg">
                   {recentResources.length > 0 ? (
                     <div className="divide-y divide-matrix-border">

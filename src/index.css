@@ -101,6 +101,23 @@
   .group:hover .focus-line {
     @apply w-full;
   }
+  
+  .hover-animate-pulse-glow {
+    transition: box-shadow 0.5s ease-in-out;
+  }
+  
+  .hover\:animate-pulse-glow:hover {
+    animation: pulse-glow 2s infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(139, 92, 246, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+    }
+  }
 }
 
 @keyframes bounce {
@@ -114,3 +131,20 @@
     transform: translateY(-3px) translateX(-50%);
   }
 }
+
+/* Animation for fade-in-right */
+@keyframes fade-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-right {
+  animation: fade-in-right 0.5s ease-out forwards;
+}
+
