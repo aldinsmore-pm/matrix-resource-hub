@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Menu, X, ChevronDown, User, Link } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -67,7 +66,23 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      console.log("Logging out...");
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Error during logout:", error);
+        return;
+      }
+      
+      // Clear user state
+      setIsLoggedIn(false);
+      setUserEmail(null);
+      setHasSubscription(false);
+      
+      // Close mobile menu if open
+      setIsMobileMenuOpen(false);
+      
+      // Navigate to home page
       navigate("/");
     } catch (error) {
       console.error("Error during logout:", error);
