@@ -43,13 +43,13 @@ serve(async (req) => {
       );
     }
 
-    // Use the existing product ID and price ID
-    const PRODUCT_ID = "prod_Pw7GUW6HPET4KU"; // Your fixed product ID
-    const PRICE_ID = "price_1PJ8nJGT8pLZP8l8MGT61mmE"; // Your fixed price ID
+    // Use the updated product ID and price ID
+    const PRODUCT_ID = "prod_RrL1RLRnascFV8"; // Updated product ID
+    const PRICE_ID = "price_1QxcL1DHuNeXQXoROL8sA5MW"; // Updated price ID
     
     console.log(`Creating checkout session for user ${user.id}`);
     
-    // Create Checkout session with the fixed price
+    // Create Checkout session with the updated price
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
