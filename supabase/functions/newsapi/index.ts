@@ -18,6 +18,11 @@ serve(async (req) => {
   try {
     console.log("Fetching AI news from NewsAPI.org");
     
+    if (!NEWS_API_KEY) {
+      console.error("NEWS_API_KEY is not defined");
+      throw new Error("API key not configured");
+    }
+    
     // Calculate date for last 30 days
     const today = new Date();
     const thirtyDaysAgo = new Date(today);
@@ -30,8 +35,11 @@ serve(async (req) => {
       sortBy: 'publishedAt',
       language: 'en',
       from: fromDate,
-      apiKey: NEWS_API_KEY || '',
+      pageSize: '5',
+      apiKey: NEWS_API_KEY,
     });
+    
+    console.log(`Making request to ${API_URL}?${params.toString().replace(NEWS_API_KEY, "API_KEY_HIDDEN")}`);
     
     // Fetch news from NewsAPI
     const response = await fetch(`${API_URL}?${params.toString()}`);
@@ -39,11 +47,16 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`NewsAPI error: ${response.status} - ${errorText}`);
-      throw new Error(`NewsAPI returned status ${response.status}`);
+      throw new Error(`NewsAPI returned status ${response.status}: ${errorText}`);
     }
     
     const newsData = await response.json();
     console.log(`Successfully fetched ${newsData.articles?.length || 0} news articles`);
+    
+    if (!newsData.articles || !Array.isArray(newsData.articles)) {
+      console.error("Invalid response structure from NewsAPI:", newsData);
+      throw new Error("Unexpected response format from NewsAPI");
+    }
     
     // Transform data to match our application's expected format
     const transformedData = newsData.articles.slice(0, 5).map((article: any, index: number) => ({
@@ -51,8 +64,10 @@ serve(async (req) => {
       title: article.title,
       published_date: article.publishedAt,
       link: article.url,
-      source: article.source.name
+      source: article.source?.name || "News Source"
     }));
+    
+    console.log("Transformed data:", transformedData);
     
     return new Response(JSON.stringify({ data: transformedData }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -74,7 +89,7 @@ serve(async (req) => {
       error: error.message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      status: 200, // Return 200 even on error so the frontend gets the fallback data
     });
   }
 });

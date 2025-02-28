@@ -38,6 +38,7 @@ const Index = () => {
   const fetchLatestNews = async () => {
     try {
       setLoadingNews(true);
+      console.log("Fetching news for homepage...");
       
       // Fetch news from our Supabase Edge Function with NewsAPI integration
       const { data, error: functionError } = await supabase.functions.invoke('newsapi');
@@ -47,18 +48,24 @@ const Index = () => {
         throw new Error('Failed to fetch news from Edge Function');
       }
       
+      console.log("Received response from Edge Function:", data);
+      
       // Check if the response contains data
       if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
         // Transform data to add the required fields for NewsCard component
-        const transformedData = data.data.slice(0, 3).map((item: NewsItem) => ({
-          ...item,
+        const transformedData = data.data.slice(0, 3).map((item: any, index: number) => ({
+          id: item.id || index.toString(),
+          title: item.title || "AI News",
+          published_date: item.published_date || new Date().toISOString(),
+          link: item.link || "#",
+          source: item.source || "AI Source",
           excerpt: `Latest AI developments and updates from ${item.source || 'various sources'}.`,
           readTime: "3 min read",
           image: getNewsImage(item.source || '')
         }));
         
         setLatestNews(transformedData);
-        console.log("Successfully fetched news for homepage:", transformedData.length, "items");
+        console.log("Successfully processed news for homepage:", transformedData);
       } else {
         console.error("Invalid or empty response from Edge Function:", data);
         throw new Error('Invalid response from Edge Function');
@@ -68,6 +75,7 @@ const Index = () => {
       toast.error("Failed to load news");
       
       // Fallback to static data if Edge Function fails
+      console.log("Using fallback news data");
       setLatestNews(news);
     } finally {
       setLoadingNews(false);
