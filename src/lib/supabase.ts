@@ -126,15 +126,29 @@ export async function isSubscribed(): Promise<boolean> {
     
     console.log("User found, checking purchase status...");
     const { data, error } = await supabase
-      .rpc('is_subscribed', { user_uuid: user.user.id });
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.user.id)
+      .eq('status', 'active')
+      .single();
       
     if (error) {
+      // If no subscription found, return false
+      if (error.code === 'PGRST116') {
+        console.log("No active purchase found");
+        return false;
+      }
       console.error("Error checking purchase status:", error);
       throw error;
     }
     
-    console.log("Purchase status:", data ? "Active" : "Inactive");
-    return data || false;
+    // Check if the subscription is still valid
+    const now = new Date();
+    const endDate = new Date(data.current_period_end);
+    const isValid = endDate > now;
+    
+    console.log("Purchase status:", isValid ? "Active" : "Expired");
+    return isValid;
   } catch (error) {
     console.error("isSubscribed error:", error);
     // Return false instead of throwing to handle the case gracefully
@@ -171,7 +185,7 @@ export async function createSubscription(plan: string, durationDays: number = 36
   return data;
 }
 
-export async function createPurchase(plan: string): Promise<Subscription | null> {
+export async function createPurchase(): Promise<Subscription | null> {
   const { data: user } = await supabase.auth.getUser();
   
   if (!user.user) return null;
@@ -184,8 +198,9 @@ export async function createPurchase(plan: string): Promise<Subscription | null>
     .from('subscriptions')
     .insert({
       user_id: user.user.id,
-      plan: plan,
+      plan: "Professional",
       status: 'active',
+      current_period_start: new Date().toISOString(),
       current_period_end: endDate.toISOString()
     })
     .select()

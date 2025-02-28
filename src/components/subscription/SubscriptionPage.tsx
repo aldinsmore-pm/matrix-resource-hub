@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
@@ -13,22 +14,13 @@ const SubscriptionPage = () => {
       toast.info("Preparing checkout...");
       
       // Get the current URL for the return URL
-      const returnUrl = window.location.origin;
+      const returnUrl = window.location.origin + "/payment-success";
       
       // Check if user is logged in
       const { data: userData } = await supabase.auth.getUser();
       
       if (!userData.user) {
         toast.error("You must be logged in to make a purchase");
-        setIsLoading(false);
-        return;
-      }
-      
-      // Get JWT token for authorization
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error("Authentication session not found");
         setIsLoading(false);
         return;
       }

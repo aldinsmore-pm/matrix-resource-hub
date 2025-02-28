@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { supabase } from "../lib/supabase";
+import { toast } from "sonner";
 
 const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
@@ -30,16 +31,26 @@ const PaymentSuccess = () => {
         
         if (error && error.code !== 'PGRST116') {
           console.error("Error checking subscription:", error);
+          toast.error("Failed to verify your purchase status. Please contact support.");
         }
         
         // If user has subscription, redirect to dashboard after 5 seconds
         if (subscriptions) {
+          toast.success("Your purchase has been confirmed!");
           setTimeout(() => {
             navigate("/dashboard");
           }, 5000);
+        } else {
+          // If we don't find a subscription yet, it might still be processing
+          toast.info("Your purchase is being processed. This may take a moment...");
+          // Check again after a delay
+          setTimeout(() => {
+            checkPaymentStatus();
+          }, 3000);
         }
       } catch (error) {
         console.error("Error verifying payment:", error);
+        toast.error("An error occurred while verifying your payment.");
       } finally {
         setLoading(false);
       }

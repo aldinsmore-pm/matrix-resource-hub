@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter as Router,
   Routes,
@@ -17,33 +18,59 @@ import { supabase, isSubscribed } from "./lib/supabase";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
-    const checkSubscription = async () => {
+    const checkAuth = async () => {
       try {
         const { data } = await supabase.auth.getUser();
 
         if (!data.user) {
           console.log("No user found, redirecting to login");
-          window.location.href = "/login";
+          setAuthenticated(false);
+          setLoading(false);
           return;
         }
 
+        setAuthenticated(true);
         const hasSubscription = await isSubscribed();
         setSubscribed(hasSubscription);
       } catch (error) {
-        console.error("Error checking subscription:", error);
+        console.error("Error checking authentication:", error);
+        setAuthenticated(false);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSubscription();
+    checkAuth();
+
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setAuthenticated(!!session);
+        if (session) {
+          const hasSubscription = await isSubscribed();
+          setSubscribed(hasSubscription);
+        } else {
+          setSubscribed(false);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!authenticated) {
+    console.log("Not authenticated, redirecting to login");
+    return <Navigate to="/login" replace />;
   }
 
   if (!subscribed) {
