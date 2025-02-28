@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Book, FileText, BarChart, FileCode, Settings, LogOut, Menu, ChevronLeft, Link } from "lucide-react";
@@ -50,15 +49,12 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // State for resource viewing
   const [resourceId, setResourceId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<string | null>(null);
 
-  // Animation states
   const [animationComplete, setAnimationComplete] = useState(false);
   
   useEffect(() => {
-    // Set animation flag after a delay to create game UI feel
     const timer = setTimeout(() => {
       setAnimationComplete(true);
     }, 800);
@@ -66,7 +62,6 @@ const Dashboard = () => {
   }, []);
   
   useEffect(() => {
-    // Check if we need to set a section from location state
     const state = location.state as LocationState | null;
     if (state) {
       console.log("Location state:", state);
@@ -80,7 +75,6 @@ const Dashboard = () => {
         setViewMode(state.view);
       }
       
-      // Clear the state after using it
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location, navigate]);
@@ -98,18 +92,15 @@ const Dashboard = () => {
           return;
         }
         console.log("User authenticated, loading profile data...");
-        // Get user profile
         const userProfile = await getProfile();
         if (!userProfile) {
           throw new Error("Failed to load user profile");
         }
         setProfile(userProfile);
         console.log("Loading subscription data...");
-        // Get subscription info
         const userSubscription = await getSubscription();
         setSubscription(userSubscription);
 
-        // Load recent resources from Supabase
         console.log("Loading recent resources...");
         const {
           data: resourcesData,
@@ -176,14 +167,13 @@ const Dashboard = () => {
   }
   
   return <div className="min-h-screen bg-matrix-bg flex">
-      {/* Game-style sidebar - animation delay */}
       <div className={`bg-matrix-bg-alt/70 backdrop-blur-md border-r border-matrix-border p-4 transition-all duration-500 ${sidebarOpen ? 'w-64' : 'w-16'} fixed h-full z-10 ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-x-10'}`} style={{
       boxShadow: '0 0 20px rgba(139, 92, 246, 0.1)'
     }}>
         <div className="flex items-center justify-between mb-8">
           {sidebarOpen ? <h1 className="text-xl font-bold text-matrix-primary animate-pulse">
-              AI <span className="text-white pipboy-text">Unlocked</span>
-            </h1> : <span className="text-xl font-bold text-matrix-primary animate-pulse">AI</span>}
+              <span className="text-white pipboy-text">Aire</span>
+            </h1> : <span className="text-xl font-bold text-matrix-primary animate-pulse">Aire</span>}
           <button onClick={toggleSidebar} className="p-1 rounded-md hover:bg-matrix-muted text-matrix-primary transition-all duration-300">
             <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${sidebarOpen ? '' : 'transform rotate-180'}`} />
           </button>
@@ -206,7 +196,6 @@ const Dashboard = () => {
         </nav>
       </div>
       
-      {/* Main content - game UI with left and right sections */}
       <div className={`flex-1 transition-all duration-300 overflow-auto ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <header className="bg-matrix-bg-alt/60 backdrop-blur-md border-b border-matrix-border p-4 transition-all duration-500 
           ${animationComplete ? 'opacity-100' : 'opacity-0 -translate-y-10'}">
@@ -231,7 +220,6 @@ const Dashboard = () => {
                 Welcome, {profile.first_name || profile.email.split('@')[0]}
               </h3>
               
-              {/* Default two column layout for resources and news links */}
               <div className="grid grid-cols-2 gap-6">
                 <div className={`card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
                   transition-all duration-700 delay-300 transform hover:scale-[1.01] hover:border-matrix-primary/50
@@ -250,7 +238,6 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              {/* Links section */}
               <div className={`transition-all duration-700 delay-450
                 ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
                 <div className="card-container p-5 rounded-lg border border-matrix-border/50 backdrop-blur-sm bg-matrix-bg-alt/30 
@@ -261,7 +248,6 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              {/* Your content links - game UI style */}
               <div className={`mt-8 transition-all duration-700 delay-500
                 ${animationComplete ? 'opacity-100' : 'opacity-0 translate-y-5'}`}>
                 <h4 className="text-lg font-semibold mb-4 pipboy-text">Your Content</h4>
@@ -323,7 +309,6 @@ const Dashboard = () => {
     </div>;
 };
 
-// New Quick Action Button Component
 const QuickActionButton = ({
   icon,
   label,
@@ -345,7 +330,6 @@ const QuickActionButton = ({
   );
 };
 
-// Link Item Component for Links section
 const LinkItem = ({
   title,
   url,
@@ -371,7 +355,6 @@ const LinkItem = ({
   );
 };
 
-// Helper function to format dates
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -385,6 +368,7 @@ const formatDate = (dateString: string) => {
     return `Created ${diffDays} days ago`;
   }
 };
+
 const SidebarItem = ({
   icon,
   label,
@@ -445,4 +429,5 @@ const ResourceItem = ({
       </div>
     </div>;
 };
+
 export default Dashboard;

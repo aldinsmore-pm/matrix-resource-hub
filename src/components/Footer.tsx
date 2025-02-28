@@ -8,7 +8,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="md:col-span-1">
             <a href="/" className="inline-block mb-4">
-              <span className="text-xl font-bold text-matrix-primary text-glow">AI <span className="text-white">Unlocked</span></span>
+              <span className="text-xl font-bold text-matrix-primary text-glow">Aire</span>
             </a>
             <p className="text-gray-400 mb-4 text-sm">
               Empowering enterprises with cutting-edge AI resources, guides, and news to transform their operations.
@@ -61,7 +61,7 @@ const Footer = () => {
         
         <div className="mt-12 pt-8 border-t border-matrix-border flex flex-col md:flex-row justify-between items-center">
           <div className="text-gray-500 text-sm mb-4 md:mb-0">
-            © {new Date().getFullYear()} AI Unlocked. All rights reserved.
+            © {new Date().getFullYear()} Aire. All rights reserved.
           </div>
           <div className="flex space-x-6">
             <a href="#" className="text-gray-400 hover:text-matrix-primary text-sm">Terms</a>

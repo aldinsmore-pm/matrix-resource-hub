@@ -80,7 +80,7 @@ const SubscriptionPage = () => {
       
       <div className="max-w-2xl mx-auto bg-matrix-muted p-6 rounded-lg border border-matrix-border mt-12">
         <h3 className="text-xl font-semibold mb-3 text-white">
-          Why Subscribe to AI Unlocked?
+          Why Subscribe to Aire?
         </h3>
         <ul className="space-y-2 text-gray-300">
           <li className="flex items-start">

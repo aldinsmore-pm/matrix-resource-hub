@@ -84,7 +84,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <a href="/" className="text-xl md:text-2xl font-bold text-matrix-primary text-glow">
-              AI <span className="text-white">Unlocked</span>
+              <span className="text-white">Aire</span>
             </a>
           </div>
 

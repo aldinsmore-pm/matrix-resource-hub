@@ -1,7 +1,41 @@
 
 import { ChevronDown, Database, Server, Code } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 
 const HeroSection = () => {
+  const [typingText, setTypingText] = useState("Enterprise");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(150);
+  const words = ["Enterprise", "Team", "Coworkers", "Colleagues", "Department"];
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleType();
+    }, typingSpeed);
+
+    return () => clearTimeout(timer);
+  }, [typingText, isDeleting, loopNum]);
+
+  const handleType = () => {
+    const i = loopNum % words.length;
+    const fullWord = words[i];
+
+    setTypingText(isDeleting 
+      ? fullWord.substring(0, typingText.length - 1) 
+      : fullWord.substring(0, typingText.length + 1)
+    );
+
+    setTypingSpeed(isDeleting ? 75 : 150);
+
+    if (!isDeleting && typingText === fullWord) {
+      setTimeout(() => setIsDeleting(true), 1000);
+    } else if (isDeleting && typingText === '') {
+      setIsDeleting(false);
+      setLoopNum(loopNum + 1);
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center pt-24 pb-16 overflow-hidden">
       <div className="container mx-auto px-4 z-10">
@@ -13,7 +47,11 @@ const HeroSection = () => {
           </div>
 
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight animate-fade-in" style={{ animationDelay: "200ms" }}>
-            <span className="text-matrix-primary text-glow">Unlock</span> the Power of AI for Your Enterprise
+            <span className="text-matrix-primary text-glow">Unlock</span> the Power of AI for Your{" "}
+            <span className="min-w-[210px] inline-block">
+              <span>{typingText}</span>
+              <span className="animate-blink">|</span>
+            </span>
           </h1>
           
           <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-3xl animate-fade-in" style={{ animationDelay: "400ms" }}>
