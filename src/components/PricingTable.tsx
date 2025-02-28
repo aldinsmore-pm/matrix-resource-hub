@@ -3,7 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-const PricingTable = () => {
+interface PricingTableProps {
+  onSubscribe?: (plan: string) => void;
+}
+
+const PricingTable = ({ onSubscribe }: PricingTableProps = {}) => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -17,10 +21,14 @@ const PricingTable = () => {
   }, []);
 
   const handlePricingClick = () => {
-    if (isLoggedIn) {
-      navigate("/payment");
+    if (onSubscribe) {
+      onSubscribe("one-time");
     } else {
-      navigate("/signup");
+      if (isLoggedIn) {
+        navigate("/payment");
+      } else {
+        navigate("/signup");
+      }
     }
   };
 
