@@ -49,6 +49,10 @@ const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // State for resource viewing
+  const [resourceId, setResourceId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<string | null>(null);
 
   // Animation states
   const [animationComplete, setAnimationComplete] = useState(false);
@@ -60,6 +64,26 @@ const Dashboard = () => {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+  
+  useEffect(() => {
+    // Check if we need to set a section from location state
+    const state = location.state as LocationState | null;
+    if (state) {
+      console.log("Location state:", state);
+      if (state.section) {
+        setActiveSection(state.section);
+      }
+      if (state.resourceId) {
+        setResourceId(state.resourceId);
+      }
+      if (state.view) {
+        setViewMode(state.view);
+      }
+      
+      // Clear the state after using it
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
   
   useEffect(() => {
     async function loadUserData() {
@@ -108,15 +132,7 @@ const Dashboard = () => {
       }
     }
     loadUserData();
-
-    // Check if we need to set a section from location state
-    const state = location.state as LocationState | null;
-    if (state && state.section) {
-      setActiveSection(state.section);
-      // Clear the state after using it
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [navigate, location.pathname]);
+  }, [navigate]);
   
   const handleLogout = async () => {
     try {
@@ -158,11 +174,6 @@ const Dashboard = () => {
         </button>
       </div>;
   }
-
-  // Get resource ID from location state
-  const state = location.state as LocationState | null;
-  const resourceId = state?.resourceId;
-  const viewMode = state?.view;
   
   return <div className="min-h-screen bg-matrix-bg flex">
       {/* Game-style sidebar - animation delay */}
