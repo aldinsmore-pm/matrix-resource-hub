@@ -17,14 +17,22 @@ import Payment from "./pages/Payment";
 
 import { supabase, isSubscribed } from "./lib/supabase";
 
+// Store auth state globally to prevent multiple redirects
+let authCheckInProgress = false;
+
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
+    if (authCheckInProgress) {
+      return;
+    }
+
     const checkAuth = async () => {
       try {
+        authCheckInProgress = true;
         console.log("ProtectedRoute: Checking authentication...");
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
@@ -32,6 +40,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
           console.error("ProtectedRoute: Error getting session:", sessionError);
           setAuthenticated(false);
           setLoading(false);
+          authCheckInProgress = false;
           return;
         }
         
@@ -39,6 +48,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
           console.log("ProtectedRoute: No active session found, redirecting to login");
           setAuthenticated(false);
           setLoading(false);
+          authCheckInProgress = false;
           return;
         }
         
@@ -49,6 +59,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
           console.log("ProtectedRoute: No user found or error, redirecting to login");
           setAuthenticated(false);
           setLoading(false);
+          authCheckInProgress = false;
           return;
         }
 
@@ -60,9 +71,11 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
         const hasSubscription = await isSubscribed();
         console.log("ProtectedRoute: Subscription status:", hasSubscription);
         setSubscribed(hasSubscription);
+        authCheckInProgress = false;
       } catch (error) {
         console.error("ProtectedRoute: Error checking authentication:", error);
         setAuthenticated(false);
+        authCheckInProgress = false;
       } finally {
         setLoading(false);
       }
@@ -74,25 +87,17 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
         console.log("ProtectedRoute: Timeout reached, stopping loading state");
         setLoading(false);
         setAuthenticated(false);
+        authCheckInProgress = false;
       }
     }, 5000); // 5 second timeout
 
     checkAuth();
 
-    // Set up auth state listener
+    // Set up auth state listener, but don't cause redirects from it
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("ProtectedRoute: Auth state changed:", event);
-        if (session) {
-          console.log("ProtectedRoute: New session established for user:", session.user.id);
-          setAuthenticated(true);
-          const hasSubscription = await isSubscribed();
-          setSubscribed(hasSubscription);
-        } else {
-          console.log("ProtectedRoute: Session ended");
-          setAuthenticated(false);
-          setSubscribed(false);
-        }
+        // Don't trigger refreshes or redirects from these events to prevent loops
       }
     );
 
@@ -143,9 +148,10 @@ const App = () => {
           setSession(data.session);
         }
         
-        // Set up auth state listener
+        // Set up auth state listener without causing redirects
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
           console.log("App: Auth state changed, new session:", session ? "Active" : "None");
+          // Only update state, don't cause redirects
           setSession(session);
         });
         

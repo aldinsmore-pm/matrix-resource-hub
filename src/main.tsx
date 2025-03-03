@@ -12,6 +12,12 @@ if (!rootElement) {
   
   try {
     console.log("Rendering React application...");
+    
+    // Wrap the app in an error boundary at the root level
+    window.addEventListener('error', (event) => {
+      console.error('Global error caught:', event.error);
+    });
+    
     root.render(<App />);
     console.log("React application rendered successfully");
   } catch (error) {
