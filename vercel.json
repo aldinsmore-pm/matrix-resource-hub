@@ -3,5 +3,9 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "framework": "vite",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "env": {
+    "VITE_SUPABASE_URL": "https://bobnfoppduagvvaktebt.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvYm5mb3BwZHVhZ3Z2YWt0ZWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMjQxMDMsImV4cCI6MjA1NjYwMDEwM30.Ivm644sPc-cqerjHDq7-4GAdZtICtFXR23mc-SGV5T4"
+  }
 }
