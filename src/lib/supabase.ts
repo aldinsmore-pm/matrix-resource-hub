@@ -7,21 +7,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-// Configure the client with options for local development
+// Configure the client with minimal options for auth
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-  },
-  global: {
-    // Add custom headers for working with Edge Functions
-    headers: {
-      'Authorization': `Bearer ${supabaseAnonKey}`,
-      'apikey': supabaseAnonKey,
-    }
-  },
+    persistSession: true,
+    detectSessionInUrl: false
+  }
 });
 
 console.log("Supabase client initialized");
