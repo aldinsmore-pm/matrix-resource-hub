@@ -41,24 +41,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
+    let timeoutId: number;
 
     async function initialize() {
       try {
-        // Get session and set up auth state change listener
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initializing auth state...');
         
+        // Set a timeout to prevent infinite loading
+        timeoutId = window.setTimeout(() => {
+          if (mounted && loading) {
+            console.log('Auth initialization timeout reached, forcing ready state');
+            setLoading(false);
+          }
+        }, 5000); // 5 second timeout
+
+        // Get session and set up auth state change listener
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
+        }
+
         if (mounted) {
+          console.log('Session retrieved:', session ? 'Active' : 'None');
           if (session?.user) {
             setUser(session.user);
             const subscribed = await checkSubscription();
             setHasSubscription(subscribed);
+          } else {
+            setUser(null);
+            setHasSubscription(false);
           }
           setLoading(false);
         }
 
         // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state changed:', event);
+          console.log('Auth state changed:', event, session ? 'with session' : 'no session');
           
           if (mounted) {
             if (session?.user) {
@@ -87,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
     };
   }, []);
   
