@@ -24,7 +24,7 @@ BEGIN
 END;
 $$;
 
--- Update the check_subscription function
+-- Update the check_subscription function to handle multiple subscriptions
 CREATE OR REPLACE FUNCTION public.check_subscription()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -35,14 +35,16 @@ BEGIN
         SELECT 1
         FROM subscriptions
         WHERE user_id = auth.uid()
-        AND status IN ('active', 'trialing')
+        AND status = 'active'
         AND current_period_end > NOW()
-        AND (cancel_at IS NULL OR cancel_at > NOW())
+        -- Get the most recently updated subscription
+        ORDER BY updated_at DESC
+        LIMIT 1
     );
 END;
 $$;
 
--- Grant execution rights to all users
+-- Grant execution rights
 GRANT EXECUTE ON FUNCTION public.check_subscription() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_subscription() TO anon;
 GRANT EXECUTE ON FUNCTION public.check_subscription() TO service_role;
