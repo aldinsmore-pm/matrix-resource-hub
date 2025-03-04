@@ -41,36 +41,74 @@ export async function handleCheckoutSessionCompleted(
     log('Fetching subscription details from Stripe', { subscriptionId });
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-    // Prepare subscription data
+    // Check for existing subscription for this user
+    const { data: existingSubscriptions, error: queryError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (queryError) {
+      log('Error querying existing subscriptions', queryError);
+      throw queryError;
+    }
+
+    // Match exact schema fields from the database
     const subscriptionData = {
       user_id: userId,
       stripe_subscription_id: subscriptionId,
-      stripe_customer_id: session.customer as string,
       status: subscription.status,
-      plan: 'matrix_subscription', // You might want to get this from product metadata
       current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
-      canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null
+      plan: 'matrix_subscription',
+      updated_at: new Date().toISOString()
     };
 
-    log('Inserting subscription data', subscriptionData);
+    // Log the database operation we're about to perform
+    log('Subscription data prepared', { 
+      subscriptionData,
+      operation: existingSubscriptions?.length ? 'update' : 'insert'
+    });
 
-    // Insert subscription record
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .upsert(subscriptionData, {
-        onConflict: 'user_id',
-        returning: 'minimal'
+    let result;
+    if (existingSubscriptions && existingSubscriptions.length > 0) {
+      // Update existing subscription
+      log('Updating existing subscription', { 
+        subscriptionId: existingSubscriptions[0].id,
+        stripeSubscriptionId: subscriptionId 
       });
+      
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .update(subscriptionData)
+        .eq('id', existingSubscriptions[0].id)
+        .select();
 
-    if (error) {
-      log('Error inserting subscription', error);
-      throw error;
+      if (error) {
+        log('Error updating subscription', error);
+        throw error;
+      }
+      result = data;
+    } else {
+      // Create new subscription
+      log('Creating new subscription', subscriptionData);
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .insert([subscriptionData])
+        .select();
+
+      if (error) {
+        log('Error inserting subscription', error);
+        throw error;
+      }
+      result = data;
     }
 
-    log('Successfully processed checkout session', { userId, subscriptionId });
-    return data;
+    log('Successfully processed checkout session', { 
+      userId, 
+      subscriptionId,
+      operation: existingSubscriptions?.length ? 'updated' : 'created'
+    });
+    return result;
   } catch (error) {
     log('Error in handleCheckoutSessionCompleted', error);
     throw error;
@@ -83,37 +121,53 @@ export async function handleSubscriptionUpdated(
 ) {
   try {
     log('Processing subscription update', { subscriptionId: subscription.id });
-
-    // Prepare subscription update data
-    const subscriptionData = {
-      stripe_subscription_id: subscription.id,
+    
+    // Extract the user_id from metadata (if available) or try to find it in the database
+    let userId = subscription.metadata?.user_id;
+    
+    if (!userId) {
+      log('No user_id in metadata, trying to find subscription in the database');
+      // Try to find the subscription in the database
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .single();
+      
+      if (error || !data) {
+        log('Error finding subscription or no matching subscription found', error);
+        return { success: false, message: 'Subscription not found in the database' };
+      }
+      
+      userId = data.user_id;
+      log('Found subscription for user', { userId });
+    }
+    
+    // Prepare update data - only use fields we know exist in the schema
+    const updateData = {
       status: subscription.status,
       current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
-      canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null
+      updated_at: new Date().toISOString()
     };
-
-    log('Updating subscription data', subscriptionData);
-
-    // Update subscription record
-    const { data, error } = await supabase
+    
+    // Update the subscription
+    log('Updating subscription', { subscriptionId: subscription.id, updateData });
+    const { error } = await supabase
       .from('subscriptions')
-      .upsert(subscriptionData, {
-        onConflict: 'stripe_subscription_id',
-        returning: 'minimal'
-      });
-
+      .update(updateData)
+      .eq('stripe_subscription_id', subscription.id);
+    
     if (error) {
       log('Error updating subscription', error);
-      throw error;
+      return { success: false, message: `Error updating subscription: ${error.message}` };
     }
-
-    log('Successfully updated subscription', { subscriptionId: subscription.id });
-    return data;
+    
+    log('Subscription updated successfully', { subscriptionId: subscription.id });
+    return { success: true, message: `Subscription updated successfully: ${subscription.id}` };
   } catch (error) {
     log('Error in handleSubscriptionUpdated', error);
-    throw error;
+    return { success: false, message: `Error processing subscription update: ${error}` };
   }
 }
 
@@ -130,6 +184,7 @@ export async function handleSubscriptionDeleted(
       .update({
         status: 'canceled',
         canceled_at: new Date().toISOString(),
+        ended_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', subscription.id)
@@ -215,5 +270,82 @@ export async function handleInvoicePaymentFailed(
   } catch (error) {
     log('Error in handleInvoicePaymentFailed', error);
     throw error;
+  }
+}
+
+export async function handleSubscriptionCreated(
+  subscription: Stripe.Subscription,
+  supabaseAdmin: any
+): Promise<{ success: boolean; message: string }> {
+  try {
+    log('Processing subscription created event', { id: subscription.id });
+    
+    // Extract user ID from metadata or from an existing subscription
+    let userId = subscription.metadata?.user_id;
+    
+    if (!userId) {
+      log('No user_id in metadata, searching in existing subscriptions');
+      
+      // Try to find the user ID from existing subscriptions with this customer ID
+      const { data, error } = await supabaseAdmin
+        .from('subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .single();
+      
+      if (error) {
+        log('No existing subscription found', error);
+      } else if (data) {
+        userId = data.user_id;
+        log('Found user_id from existing subscription', { userId });
+      }
+    }
+    
+    if (!userId) {
+      return { 
+        success: false, 
+        message: 'Could not determine user_id for subscription' 
+      };
+    }
+    
+    // Prepare subscription data matching the exact database schema
+    const subscriptionData = {
+      user_id: userId,
+      plan: 'matrix_subscription',
+      status: subscription.status,
+      stripe_subscription_id: subscription.id,
+      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    log('Inserting subscription data', subscriptionData);
+    
+    // Upsert the subscription data
+    const { data, error } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert([subscriptionData])
+      .select();
+      
+    if (error) {
+      log('Error inserting subscription', error);
+      return {
+        success: false,
+        message: `Failed to insert subscription: ${error.message}`
+      };
+    }
+    
+    log('Successfully processed subscription creation', data);
+    return {
+      success: true,
+      message: 'Subscription created successfully'
+    };
+    
+  } catch (err) {
+    log('Unexpected error in handleSubscriptionCreated', err);
+    return {
+      success: false,
+      message: `Error processing subscription: ${err.message}`
+    };
   }
 } 
