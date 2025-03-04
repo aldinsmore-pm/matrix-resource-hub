@@ -1,9 +1,11 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Content-Type': 'application/json'
 };
 
 // Google Alerts RSS feed URL
@@ -12,7 +14,10 @@ const RSS_FEED_URL = 'https://www.google.com/alerts/feeds/02761415313750958672/1
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    });
   }
 
   try {
@@ -56,20 +61,21 @@ serve(async (req) => {
       throw new Error("No items found in RSS feed");
     }
     
+    // Return the response with CORS headers
     return new Response(JSON.stringify({ data: items }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
+      headers: corsHeaders
     });
   } catch (error) {
     console.error("Error processing RSS feed:", error.message);
     
-    // Return an error response
+    // Return error response with CORS headers
     return new Response(JSON.stringify({ 
       error: error.message,
       message: "Please check the Edge Function logs"
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500
+      status: 500,
+      headers: corsHeaders
     });
   }
 });
