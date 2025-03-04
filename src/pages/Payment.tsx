@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { redirectToCustomerPortal } from '../lib/supabase';
 import { getCurrentUrl } from '../lib/utils';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+
+// Initialize Stripe with publishable key
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Payment = () => {
   const [loading, setLoading] = useState(false);
@@ -30,17 +33,35 @@ const Payment = () => {
         return;
       }
 
-      // Get the return URL
-      const returnUrl = getCurrentUrl('/dashboard');
-      
-      // Get portal URL
-      const portalUrl = await redirectToCustomerPortal(returnUrl);
-      if (!portalUrl) {
-        throw new Error('Failed to get Customer Portal URL');
+      // Load Stripe instance
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe failed to initialize');
       }
 
-      // Redirect to portal
-      window.location.href = portalUrl;
+      // Get the price ID from environment variables
+      const priceId = import.meta.env.VITE_STRIPE_PRICE_ID;
+      if (!priceId) {
+        throw new Error('Stripe price ID not configured');
+      }
+
+      // Create Stripe Checkout session
+      const { error } = await stripe.redirectToCheckout({
+        lineItems: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        successUrl: getCurrentUrl('/dashboard'),
+        cancelUrl: getCurrentUrl('/payment'),
+        clientReferenceId: user.id, // Pass the user ID to identify the customer
+      });
+
+      if (error) {
+        throw error;
+      }
     } catch (error: any) {
       console.error('Payment error:', error);
       setErrorMsg(error.message || 'Failed to process payment');
