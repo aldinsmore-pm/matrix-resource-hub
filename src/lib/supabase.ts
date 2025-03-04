@@ -13,6 +13,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false
+  },
+  global: {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
   }
 });
 
@@ -147,110 +153,92 @@ export async function getSubscription(): Promise<Subscription | null> {
   }
 }
 
-export async function isSubscribed(): Promise<boolean> {
+export const isSubscribed = async (): Promise<boolean> => {
   try {
-    console.log("Checking if user has purchased...");
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    console.log("isSubscribed: Checking subscription status...");
     
-    if (sessionError) {
-      console.error("Error getting session for purchase check:", sessionError);
-      return false;
-    }
-    
-    if (!sessionData.session) {
-      console.log("No active session for purchase check");
-      return false;
-    }
-    
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    // First, get the current user
+    const { data: user, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
-      console.error("Error getting user for purchase check:", userError);
+      console.error("isSubscribed: Error getting user:", userError);
       return false;
     }
     
-    if (!userData.user) {
-      console.log("No user found for purchase check");
+    if (!user.user) {
+      console.log("isSubscribed: No authenticated user found");
       return false;
     }
     
-    // Try different methods to check for subscription, starting with database function
-    console.log("User found, checking purchase status for:", userData.user.id);
+    // Debug header value
+    console.log("isSubscribed: Using Accept header:", "application/json");
     
+    // Method 1: Try direct query first
     try {
-      // Method 1: Try using the database function
-      const { data: hasSubData, error: hasSubError } = await supabase
-        .rpc('check_subscription', { uid: userData.user.id });
-        
-      if (!hasSubError && hasSubData === true) {
-        console.log("Database function confirms active subscription");
-        return true;
+      const { data, error, status } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .eq('status', 'active')
+        .maybeSingle();
+      
+      console.log(`isSubscribed: Query response - Status: ${status}, Error: ${error ? JSON.stringify(error) : 'None'}`);
+      
+      if (!error) {
+        const hasActiveSubscription = !!data;
+        console.log(`isSubscribed: Active subscription found: ${hasActiveSubscription}`, data ? `ID: ${data.id}` : '');
+        return hasActiveSubscription;
       }
       
-      console.log("Database function check result:", hasSubData, hasSubError);
-    } catch (functionError) {
-      console.log("Error using database function:", functionError);
-      // Continue to next method
+      // If we got an error, but not a 'not found' error, try the fallback
+      console.error('isSubscribed: Error checking subscription status:', error);
+      
+      // Add specific debugging for 406 errors and other cases
+      if (status === 406) {
+        console.error('isSubscribed: Received 406 Not Acceptable error. This may indicate a header or content negotiation issue.');
+        console.error('isSubscribed: Request headers may be inconsistent with server expectations.');
+      }
+    } catch (queryError) {
+      console.error('isSubscribed: Error in direct query:', queryError);
     }
     
-    // Method 2: Try direct query (original method)
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userData.user.id)
-      .eq('status', 'active')
-      .maybeSingle();
+    // Method 2: Fall back to RPC function which is more reliable and has proper security checks
+    console.log('isSubscribed: Attempting fallback using check_subscription RPC function...');
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      'check_subscription', 
+      { uid: user.user.id }
+    );
+    
+    if (rpcError) {
+      console.error('isSubscribed: Fallback RPC failed:', rpcError);
       
-    if (error) {
-      console.error("Error checking purchase status:", error);
-      
-      // Method 3: Try a simpler query if the original failed (might be permissions issue)
+      // Method 3: Last resort - check if any subscription exists for this user
       try {
-        const { data: simpleData, error: simpleError } = await supabase
+        const { data: anySubData, error: anySubError } = await supabase
           .from('subscriptions')
           .select('id, status')
-          .eq('user_id', userData.user.id)
-          .maybeSingle();
+          .eq('user_id', user.user.id)
+          .eq('status', 'active')
+          .limit(1);
           
-        if (!simpleError && simpleData?.status === 'active') {
-          console.log("Simple query found active subscription");
+        if (!anySubError && anySubData && anySubData.length > 0) {
+          console.log('isSubscribed: Found active subscription through basic query');
           return true;
         }
-      } catch (simpleQueryError) {
-        console.log("Simple query error:", simpleQueryError);
+      } catch (lastError) {
+        console.error('isSubscribed: All methods failed:', lastError);
       }
       
       return false;
     }
     
-    if (!data) {
-      console.log("No active purchase found");
-      return false;
-    }
-    
-    // Check if the subscription is still valid
-    const now = new Date();
-    const endDate = new Date(data.current_period_end);
-    const cancelAt = data.cancel_at ? new Date(data.cancel_at) : null;
-    
-    if (now > endDate) {
-      console.log("Subscription expired");
-      return false;
-    }
-    
-    if (cancelAt && now > cancelAt) {
-      console.log("Subscription canceled");
-      return false;
-    }
-    
-    console.log("Active purchase confirmed");
-    return true;
-  } catch (error) {
-    console.error("isSubscribed error:", error);
-    // Return false instead of throwing to handle the case gracefully
+    console.log('isSubscribed: Fallback RPC result:', rpcData);
+    return !!rpcData;
+  } catch (e) {
+    console.error('isSubscribed: Unexpected error checking subscription:', e);
     return false;
   }
-}
+};
 
 export async function createSubscription(plan: string, durationDays: number = 365): Promise<Subscription | null> {
   const { data: user } = await supabase.auth.getUser();

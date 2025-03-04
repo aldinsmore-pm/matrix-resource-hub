@@ -20,21 +20,35 @@ const Payment = () => {
     const loadStripe = () => {
       const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
       if (!publishableKey) {
-        console.error("Stripe publishable key is not set");
+        console.error("Stripe publishable key is not set in environment variables.");
+        toast.error("Payment system configuration error. Please contact support.");
+        return;
+      }
+      
+      if (!window.Stripe) {
+        console.error("Stripe.js is not loaded. Make sure the script is included in the HTML.");
+        // Retry loading Stripe after a delay
+        setTimeout(loadStripe, 1000);
         return;
       }
       
       try {
         const stripeInstance = window.Stripe(publishableKey);
         setStripeJs(stripeInstance);
-        console.log("Stripe initialized successfully");
+        console.log("Stripe initialized successfully with key:", publishableKey.substring(0, 8) + "...");
       } catch (error) {
         console.error("Error initializing Stripe:", error);
+        toast.error("Could not initialize payment system. Please try again later.");
       }
     };
     
-    // Wait a short moment to ensure Stripe.js is loaded
-    setTimeout(loadStripe, 100);
+    // Try to load Stripe immediately
+    loadStripe();
+    
+    // Also set a fallback timeout in case the script loads with delay
+    const fallbackTimer = setTimeout(loadStripe, 1000);
+    
+    return () => clearTimeout(fallbackTimer);
   }, []);
 
   // Function to handle direct checkout with Stripe

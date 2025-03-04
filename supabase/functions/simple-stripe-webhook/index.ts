@@ -3,323 +3,337 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import Stripe from "https://esm.sh/stripe@13.11.0";
 
 // Constants
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-// Initialize Supabase client with service role key (no auth needed)
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-// Helper function to log webhook processing
-function log(message: string, data?: any) {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${message}`);
-  if (data) {
-    console.log(JSON.stringify(data, null, 2));
-  }
-}
-
-// CORS headers for preflight requests
+// CORS headers for browser requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "*",
-  "Content-Type": "application/json"
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Content-Type": "application/json",
 };
 
-// Main webhook handler
-serve(async (req: Request) => {
+// Better logging helper
+function log(message: string, data?: any) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    message,
+    ...(data ? { data } : {}),
+  };
+  console.log(JSON.stringify(logEntry));
+}
+
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
-  // Only allow POST requests for the webhook
+  // Only handle POST requests
   if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Method Not Allowed" }), 
-      { status: 405, headers: corsHeaders }
-    );
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders },
+    });
   }
 
   try {
-    // Get the request body and signature
+    // Get the request body and stripe signature header
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
+    log("Received webhook request", { 
+      method: req.method,
+      hasSignature: !!signature
+    });
+
     if (!signature) {
       log("Missing Stripe signature");
-      return new Response(
-        JSON.stringify({ error: "Missing signature" }), 
-        { status: 400, headers: corsHeaders }
-      );
+      return new Response("Missing signature", { status: 400, headers: corsHeaders });
     }
+
+    // Initialize Stripe
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: "2023-10-16",
+    });
 
     // Verify and construct the event
     let event: Stripe.Event;
     try {
-      // Initialize Stripe without the API key since we're only using it for signature verification
-      const stripe = new Stripe("", {
-        apiVersion: "2023-10-16",
-      });
-      
-      event = await stripe.webhooks.constructEventAsync(body, signature, STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
+      event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
+    } catch (err: any) {
       log("Error verifying webhook signature", err);
-      return new Response(
-        JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }), 
-        { status: 400, headers: corsHeaders }
-      );
+      return new Response(`Webhook signature verification failed: ${err.message}`, { 
+        status: 400,
+        headers: corsHeaders
+      });
     }
 
-    log("Received Stripe webhook event", { type: event.type, id: event.id });
+    // Initialize Supabase client with service role key
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    log("Supabase client initialized with service role key", { 
+      url: SUPABASE_URL?.substring(0, 15) + "..." 
+    });
 
-    // Process different event types
-    try {
-      if (event.type === "checkout.session.completed") {
+    // Process the webhook event
+    log("Processing webhook event", { type: event.type, id: event.id });
+
+    // Variable to store result of operation
+    let result: { success: boolean; message: string; received?: boolean } = {
+      success: false,
+      message: "Unhandled event type",
+      received: true
+    };
+
+    // Handle different event types
+    switch (event.type) {
+      case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        log("Processing checkout.session.completed", { 
-          sessionId: session.id,
+        log("Processing checkout session", { 
+          id: session.id,
           clientReferenceId: session.client_reference_id,
           subscriptionId: session.subscription
         });
-        
-        // Basic validation
+
         const userId = session.client_reference_id;
-        if (!userId) {
-          throw new Error('No client_reference_id found in session');
-        }
-
         const subscriptionId = session.subscription as string;
-        if (!subscriptionId) {
-          throw new Error('No subscription ID found in session');
-        }
 
-        // For testing purposes, we'll construct the subscription data without calling Stripe
-        const now = new Date();
-        const oneYearLater = new Date();
-        oneYearLater.setFullYear(now.getFullYear() + 1);
-        
-        const subscriptionData = {
-          user_id: userId,
-          stripe_subscription_id: subscriptionId,
-          status: 'active',
-          current_period_start: now.toISOString(),
-          current_period_end: oneYearLater.toISOString(),
-          plan: 'matrix_subscription',
-          updated_at: now.toISOString()
-        };
-
-        // Check for existing subscription for this user
-        const { data: existingSubscriptions, error: queryError } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', userId);
-
-        if (queryError) {
-          log('Error querying existing subscriptions', queryError);
-          throw queryError;
-        }
-
-        log('Subscription data prepared', { 
-          subscriptionData,
-          operation: existingSubscriptions?.length ? 'update' : 'insert'
-        });
-
-        let result;
-        if (existingSubscriptions && existingSubscriptions.length > 0) {
-          // Update existing subscription
-          log('Updating existing subscription', { 
-            subscriptionId: existingSubscriptions[0].id,
-            stripeSubscriptionId: subscriptionId 
+        if (!userId) {
+          return new Response(JSON.stringify({ 
+            error: "No user ID in client reference" 
+          }), { 
+            status: 400,
+            headers: corsHeaders
           });
-          
-          const { data, error } = await supabase
-            .from('subscriptions')
-            .update(subscriptionData)
-            .eq('id', existingSubscriptions[0].id)
-            .select();
-
-          if (error) {
-            log('Error updating subscription', error);
-            throw error;
-          }
-          result = data;
-        } else {
-          // Create new subscription
-          log('Creating new subscription', subscriptionData);
-          const { data, error } = await supabase
-            .from('subscriptions')
-            .insert([subscriptionData])
-            .select();
-
-          if (error) {
-            log('Error inserting subscription', error);
-            throw error;
-          }
-          result = data;
         }
 
-        log('Successfully processed checkout session', { 
-          userId, 
-          subscriptionId,
-          operation: existingSubscriptions?.length ? 'updated' : 'created'
-        });
+        if (!subscriptionId) {
+          return new Response(JSON.stringify({ 
+            error: "No subscription ID in session" 
+          }), { 
+            status: 400,
+            headers: corsHeaders
+          });
+        }
+
+        // Get the subscription details from Stripe
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         
-        return new Response(
-          JSON.stringify({ 
-            received: true, 
-            result: { 
-              success: true, 
-              message: `Subscription ${existingSubscriptions?.length ? 'updated' : 'created'} successfully: ${subscriptionId}`,
-              data: result
-            } 
-          }),
-          { status: 200, headers: corsHeaders }
-        );
-      } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
+        if (!subscription) {
+          return new Response(JSON.stringify({ 
+            error: "Could not retrieve subscription from Stripe" 
+          }), { 
+            status: 500,
+            headers: corsHeaders
+          });
+        }
+
+        // Create subscription record in Supabase
+        const { error } = await supabase
+          .from("subscriptions")
+          .insert({
+            id: crypto.randomUUID(),
+            user_id: userId,
+            status: subscription.status,
+            plan: "matrix_subscription",
+            stripe_customer_id: subscription.customer as string,
+            stripe_subscription_id: subscription.id,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          });
+
+        if (error) {
+          log("Error creating subscription", error);
+          return new Response(JSON.stringify({ 
+            error: "Failed to create subscription record" 
+          }), { 
+            status: 500,
+            headers: corsHeaders
+          });
+        }
+
+        result = {
+          success: true,
+          message: "Subscription created successfully",
+          received: true
+        };
+        break;
+      }
+
+      case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        log(`Processing ${event.type} event`, { subscriptionId: subscription.id });
-        
-        // Extract the user_id from metadata (if available) or try to find it in the database
-        let userId = subscription.metadata?.user_id;
+        log("Processing subscription update", { 
+          id: subscription.id, 
+          status: subscription.status 
+        });
+
+        // Get the user ID from metadata
+        const userId = subscription.metadata?.user_id;
         
         if (!userId) {
-          log('No user_id in metadata, trying to find subscription in the database');
-          // Try to find the subscription in the database
-          const { data, error } = await supabase
-            .from('subscriptions')
-            .select('user_id')
-            .eq('stripe_subscription_id', subscription.id)
-            .single();
+          log("No user ID in subscription metadata", subscription.metadata);
           
-          if (error || !data) {
-            log('Error finding subscription or no matching subscription found', error);
+          // Try to find the subscription record by stripe_subscription_id
+          const { data: existingSub, error: findError } = await supabase
+            .from("subscriptions")
+            .select("user_id")
+            .eq("stripe_subscription_id", subscription.id)
+            .maybeSingle();
             
-            // If no user_id in metadata and no subscription found, we can't proceed
-            if (!subscription.metadata?.user_id) {
-              return new Response(
-                JSON.stringify({ 
-                  received: true, 
-                  result: { success: false, message: 'No user_id in metadata and subscription not found in the database' } 
-                }),
-                { status: 404, headers: corsHeaders }
-              );
-            }
-            
-            // If we have user_id in metadata but no subscription found, create a new one
-            log('Creating new subscription from update event', { 
-              user_id: subscription.metadata.user_id,
-              subscription_id: subscription.id
+          if (findError || !existingSub) {
+            log("Could not find existing subscription record", findError);
+            return new Response(JSON.stringify({ 
+              error: "No user ID in metadata and could not find subscription" 
+            }), { 
+              status: 400,
+              headers: corsHeaders
             });
-            
-            // Create basic subscription data
-            const now = new Date();
-            const subscriptionData = {
-              user_id: subscription.metadata.user_id,
-              stripe_subscription_id: subscription.id,
+          }
+          
+          // Update the existing subscription
+          const { error: updateError } = await supabase
+            .from("subscriptions")
+            .update({
               status: subscription.status,
               current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
               current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-              plan: 'matrix_subscription', // Default plan
-              updated_at: now.toISOString()
-            };
+              updated_at: new Date().toISOString(),
+              cancel_at: subscription.cancel_at 
+                ? new Date(subscription.cancel_at * 1000).toISOString() 
+                : null,
+              canceled_at: subscription.canceled_at 
+                ? new Date(subscription.canceled_at * 1000).toISOString() 
+                : null,
+            })
+            .eq("stripe_subscription_id", subscription.id);
             
-            // Insert the new subscription
-            const { data: newSubscription, error: insertError } = await supabase
-              .from('subscriptions')
-              .insert([subscriptionData])
-              .select();
-            
-            if (insertError) {
-              log('Error creating new subscription', insertError);
-              return new Response(
-                JSON.stringify({ 
-                  received: true, 
-                  result: { success: false, message: `Error creating subscription: ${insertError.message}` } 
-                }),
-                { status: 500, headers: corsHeaders }
-              );
-            }
-            
-            log('New subscription created successfully', { subscriptionId: subscription.id });
-            return new Response(
-              JSON.stringify({ 
-                received: true, 
-                result: { 
-                  success: true, 
-                  message: `New subscription created successfully: ${subscription.id}`,
-                  data: newSubscription
-                } 
-              }),
-              { status: 200, headers: corsHeaders }
-            );
+          if (updateError) {
+            log("Error updating existing subscription", updateError);
+            return new Response(JSON.stringify({ 
+              error: "Failed to update subscription record" 
+            }), { 
+              status: 500,
+              headers: corsHeaders
+            });
           }
           
-          userId = data.user_id;
-          log('Found subscription for user', { userId });
+          result = {
+            success: true,
+            message: `Subscription updated successfully: ${subscription.id}`,
+            received: true
+          };
+          break;
         }
         
-        // Prepare update data - only use fields we know exist in the schema
-        const updateData = {
-          status: subscription.status,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          updated_at: new Date().toISOString()
+        // Check if a subscription record already exists
+        const { data: existingSub, error: findError } = await supabase
+          .from("subscriptions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("stripe_subscription_id", subscription.id)
+          .maybeSingle();
+          
+        if (findError && findError.code !== 'PGRST116') {
+          log("Error checking for existing subscription", findError);
+          return new Response(JSON.stringify({ 
+            error: "Failed to check for existing subscription" 
+          }), { 
+            status: 500,
+            headers: corsHeaders
+          });
+        }
+        
+        if (existingSub) {
+          // Update existing subscription
+          const { error: updateError } = await supabase
+            .from("subscriptions")
+            .update({
+              status: subscription.status,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              updated_at: new Date().toISOString(),
+              cancel_at: subscription.cancel_at 
+                ? new Date(subscription.cancel_at * 1000).toISOString() 
+                : null,
+              canceled_at: subscription.canceled_at 
+                ? new Date(subscription.canceled_at * 1000).toISOString() 
+                : null,
+            })
+            .eq("id", existingSub.id);
+            
+          if (updateError) {
+            log("Error updating subscription", updateError);
+            return new Response(JSON.stringify({ 
+              error: "Failed to update subscription record" 
+            }), { 
+              status: 500,
+              headers: corsHeaders
+            });
+          }
+        } else {
+          // Create a new subscription record
+          const { error: insertError } = await supabase
+            .from("subscriptions")
+            .insert({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              status: subscription.status,
+              plan: "matrix_subscription",
+              stripe_customer_id: subscription.customer as string,
+              stripe_subscription_id: subscription.id,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              cancel_at: subscription.cancel_at 
+                ? new Date(subscription.cancel_at * 1000).toISOString() 
+                : null,
+              canceled_at: subscription.canceled_at 
+                ? new Date(subscription.canceled_at * 1000).toISOString() 
+                : null,
+            });
+            
+          if (insertError) {
+            log("Error creating new subscription", insertError);
+            return new Response(JSON.stringify({ 
+              error: "Failed to create subscription record" 
+            }), { 
+              status: 500,
+              headers: corsHeaders
+            });
+          }
+        }
+        
+        result = {
+          success: true,
+          message: `Subscription updated successfully: ${subscription.id}`,
+          received: true
         };
-        
-        // Update the subscription
-        log('Updating subscription', { subscriptionId: subscription.id, updateData });
-        const { error } = await supabase
-          .from('subscriptions')
-          .update(updateData)
-          .eq('stripe_subscription_id', subscription.id);
-        
-        if (error) {
-          log('Error updating subscription', error);
-          return new Response(
-            JSON.stringify({ 
-              received: true, 
-              result: { success: false, message: `Error updating subscription: ${error.message}` } 
-            }),
-            { status: 500, headers: corsHeaders }
-          );
-        }
-        
-        log('Subscription updated successfully', { subscriptionId: subscription.id });
-        return new Response(
-          JSON.stringify({ 
-            received: true, 
-            result: { success: true, message: `Subscription updated successfully: ${subscription.id}` } 
-          }),
-          { status: 200, headers: corsHeaders }
-        );
-      } else {
-        // Handle other event types with a simple response
-        log(`Event type ${event.type} not handled by this webhook`);
-        return new Response(
-          JSON.stringify({ 
-            received: true, 
-            result: { success: true, message: `Event received but not processed: ${event.type}` } 
-          }),
-          { status: 200, headers: corsHeaders }
-        );
+        break;
       }
-    } catch (err) {
-      log(`Error processing webhook event`, err);
-      return new Response(
-        JSON.stringify({ 
-          error: `Error processing webhook: ${err.message}`, 
-          details: err.stack 
-        }), 
-        { status: 500, headers: corsHeaders }
-      );
+
+      default:
+        log("Unhandled event type", { type: event.type });
+        result = {
+          success: false,
+          message: `Unhandled event type: ${event.type}`,
+          received: true
+        };
     }
-  } catch (err) {
-    log("Unexpected error", err);
-    return new Response(
-      JSON.stringify({ error: `Unexpected error: ${err.message}` }), 
-      { status: 500, headers: corsHeaders }
-    );
+
+    return new Response(JSON.stringify({ received: true, result }), {
+      status: 200,
+      headers: corsHeaders,
+    });
+  } catch (error: any) {
+    log("Unexpected error processing webhook", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }); 
