@@ -227,8 +227,19 @@ const App = () => {
           <Route path="/signup" element={<Signup />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
-          {/* Redirect /subscription to /payment if anyone tries to access it */}
           <Route path="/subscription" element={<Navigate to="/payment" replace />} />
+          
+          {/* New routes for navigation */}
+          <Route path="/resources" element={<Navigate to="/#resources" replace />} />
+          <Route path="/news" element={<Navigate to="/#news" replace />} />
+          <Route path="/guides" element={<Navigate to="/#guides" replace />} />
+          <Route path="/links" element={<Navigate to="/#links" replace />} />
+          
+          {/* Solution routes */}
+          <Route path="/solutions/enterprise-ai" element={<Navigate to="/#enterprise-ai" replace />} />
+          <Route path="/solutions/ai-integration" element={<Navigate to="/#ai-integration" replace />} />
+          <Route path="/solutions/ai-training" element={<Navigate to="/#ai-training" replace />} />
+          
           <Route
             path="/dashboard/*"
             element={

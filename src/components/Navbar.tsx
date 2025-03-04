@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Menu, X, ChevronDown, User, Link } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Menu, X, ChevronDown, User } from "lucide-react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase, isSubscribed } from "../lib/supabase";
 import { toast } from "sonner";
 
@@ -104,10 +104,10 @@ const Navbar = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
-            <NavLink href="#resources">Resources</NavLink>
-            <NavLink href="#news">News</NavLink>
-            <NavLink href="#guides">Guides</NavLink>
-            <NavLink href="#links">Links</NavLink>
+            <NavLink href="/#resources">Resources</NavLink>
+            <NavLink href="/#news">News</NavLink>
+            <NavLink href="/#guides">Guides</NavLink>
+            <NavLink href="/#links">Links</NavLink>
             
             <div className="relative group">
               <button className="flex items-center text-gray-300 hover:text-white transition-colors">
@@ -116,9 +116,9 @@ const Navbar = () => {
               </button>
               <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-matrix-bg-alt border border-matrix-border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform group-hover:translate-y-0 translate-y-2 z-50">
                 <div className="py-1 card-container rounded-md">
-                  <DropdownLink href="#">Enterprise AI</DropdownLink>
-                  <DropdownLink href="#">AI Integration</DropdownLink>
-                  <DropdownLink href="#">AI Training</DropdownLink>
+                  <DropdownLink href="/#enterprise-ai">Enterprise AI</DropdownLink>
+                  <DropdownLink href="/#ai-integration">AI Integration</DropdownLink>
+                  <DropdownLink href="/#ai-training">AI Training</DropdownLink>
                 </div>
               </div>
             </div>
@@ -173,15 +173,15 @@ const Navbar = () => {
         }`}
       >
         <div className="container mx-auto py-4 px-4 space-y-3">
-          <MobileNavLink href="#resources">Resources</MobileNavLink>
-          <MobileNavLink href="#news">News</MobileNavLink>
-          <MobileNavLink href="#guides">Guides</MobileNavLink>
-          <MobileNavLink href="#links">Links</MobileNavLink>
+          <MobileNavLink href="/#resources">Resources</MobileNavLink>
+          <MobileNavLink href="/#news">News</MobileNavLink>
+          <MobileNavLink href="/#guides">Guides</MobileNavLink>
+          <MobileNavLink href="/#links">Links</MobileNavLink>
           
           <div className="border-t border-matrix-border pt-3">
-            <MobileNavLink href="#enterprise-ai">Enterprise AI</MobileNavLink>
-            <MobileNavLink href="#ai-integration">AI Integration</MobileNavLink>
-            <MobileNavLink href="#ai-training">AI Training</MobileNavLink>
+            <MobileNavLink href="/#enterprise-ai">Enterprise AI</MobileNavLink>
+            <MobileNavLink href="/#ai-integration">AI Integration</MobileNavLink>
+            <MobileNavLink href="/#ai-training">AI Training</MobileNavLink>
           </div>
           
           <div className="pt-3 border-t border-matrix-border">
