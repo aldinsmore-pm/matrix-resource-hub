@@ -1,201 +1,135 @@
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
-import { supabase } from "../lib/supabase";
-
-// Add type declaration for Stripe
-declare global {
-  interface Window {
-    Stripe?: (key: string) => any;
-  }
-}
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { redirectToCustomerPortal } from '../lib/supabase';
+import { getCurrentUrl } from '../lib/utils';
+import { toast } from 'sonner';
 
 const Payment = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [stripeJs, setStripeJs] = useState<any>(null);
-  
-  // Load Stripe.js on component mount
-  useEffect(() => {
-    const loadStripe = () => {
-      try {
-        // First, check if environment variable is available
-        const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-        
-        // Detailed logs to help diagnose issues
-        console.log("Stripe initialization - Environment variables check:");
-        console.log("VITE_STRIPE_PUBLISHABLE_KEY available:", !!publishableKey);
-        
-        if (!publishableKey) {
-          console.error("Stripe publishable key is not set in environment variables.");
-          
-          // Fallback to hard-coded key for testing only - NOT recommended for production
-          const fallbackKey = "pk_test_51QxYA5Rdb4qpGphFqrRfO4mXRpKL6x9qZjP0opKHvj8JcDiZsMqwqfkUwwFDCc43HyxAXTQDh4XotfXNop1si8z000bFIaLScD";
-          console.log("Using fallback key for development purposes");
-          
-          initializeStripe(fallbackKey);
-          return;
-        }
-        
-        initializeStripe(publishableKey);
-      } catch (error) {
-        console.error("Error loading Stripe:", error);
-        toast.error("Payment system initialization error. Please try again later.");
-        // Retry after a delay
-        setTimeout(loadStripe, 2000);
-      }
-    };
-    
-    const initializeStripe = (key: string) => {
-      if (!window.Stripe) {
-        console.error("Stripe.js is not loaded. Make sure the script is included in the HTML.");
-        // Retry loading after a delay
-        setTimeout(() => loadStripe(), 1000);
-        return;
-      }
-      
-      try {
-        const stripeInstance = window.Stripe(key);
-        setStripeJs(stripeInstance);
-        console.log("Stripe initialized successfully");
-      } catch (error) {
-        console.error("Error initializing Stripe:", error);
-        toast.error("Payment system error. Please contact support if the issue persists.");
-      }
-    };
-    
-    loadStripe();
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { user, hasSubscription } = useAuth();
+  const navigate = useNavigate();
 
-  // Function to handle direct checkout with Stripe
-  const handleDirectCheckout = async () => {
-    setIsLoading(true);
-    
+  useEffect(() => {
+    if (hasSubscription) {
+      navigate('/dashboard');
+    }
+  }, [hasSubscription, navigate]);
+
+  const handleCheckout = async () => {
     try {
-      toast.info("Preparing Stripe checkout...");
-      
-      // Check if Stripe is loaded
-      if (!stripeJs) {
-        toast.error("Stripe.js is still loading. Please try again in a moment.");
-        console.error("Stripe.js not initialized when attempting checkout");
-        setIsLoading(false);
+      setLoading(true);
+      setErrorMsg(null);
+
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
         return;
       }
+
+      // Get the return URL
+      const returnUrl = getCurrentUrl('/dashboard');
       
-      // Get the current URL for the return URL
-      const returnUrl = window.location.origin + "/payment-success";
-      
-      // Check if user is logged in
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData.user) {
-        toast.error("You must be logged in to make a purchase");
-        setIsLoading(false);
-        return;
+      // Get portal URL
+      const portalUrl = await redirectToCustomerPortal(returnUrl);
+      if (!portalUrl) {
+        throw new Error('Failed to get Customer Portal URL');
       }
-      
-      console.log("Creating checkout session with Stripe...");
-      const priceId = import.meta.env.VITE_STRIPE_PRICE_ID;
-      console.log("Using price ID:", priceId);
-      
-      // Prepare the checkout parameters
-      const checkoutParams = {
-        lineItems: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        mode: 'subscription',
-        successUrl: returnUrl,
-        cancelUrl: window.location.origin,
-        customerEmail: userData.user.email,
-      };
-      
-      console.log("Checkout parameters:", JSON.stringify(checkoutParams));
-      
-      // Redirect to Stripe checkout
-      const { error } = await stripeJs.redirectToCheckout(checkoutParams);
-      
-      if (error) {
-        console.error("Stripe redirect error:", error);
-        toast.error(`Stripe error: ${error.message}`);
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error("Direct checkout error:", error);
-      toast.error(`Error: ${error.message}`);
-      setIsLoading(false);
+
+      // Redirect to portal
+      window.location.href = portalUrl;
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setErrorMsg(error.message || 'Failed to process payment');
+      toast.error(error.message || 'Failed to process payment');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Function to handle payment via Stripe
-  const handlePayment = async () => {
-    return handleDirectCheckout();
-  };
-
   return (
-    <div className="min-h-screen bg-matrix-bg">
-      <Navbar />
-      <div className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              Get <span className="text-matrix-primary">Full Access</span>
-            </h1>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              One-time payment for permanent access to all features
+    <div className="min-h-screen bg-matrix-bg flex flex-col items-center justify-center p-4">
+      <div className="max-w-md w-full space-y-8 bg-matrix-card p-8 rounded-lg shadow-lg">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-matrix-primary mb-2">
+            Subscribe to Matrix Resource Hub
+          </h2>
+          <p className="text-gray-400 mb-6">
+            Get access to all resources and features
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="border border-matrix-border rounded-lg p-6">
+            <h3 className="text-xl font-semibold text-matrix-primary mb-2">
+              Professional Plan
+            </h3>
+            <p className="text-gray-400 mb-4">
+              Full access to all features and resources
             </p>
-          </div>
-          
-          <div className="max-w-xl mx-auto">
-            <div className="bg-matrix-muted p-8 rounded-lg border border-matrix-border">
-              <div className="text-center mb-6">
-                <div className="text-4xl font-bold text-matrix-primary mb-2">$99</div>
-                <p className="text-gray-300">One-time payment for lifetime access</p>
-              </div>
-              
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-start">
-                  <div className="text-matrix-primary mr-2">•</div>
-                  <span className="text-gray-300">Complete access to all AI implementation resources</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="text-matrix-primary mr-2">•</div>
-                  <span className="text-gray-300">Exclusive industry reports and analysis</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="text-matrix-primary mr-2">•</div>
-                  <span className="text-gray-300">Priority support from our AI specialists</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="text-matrix-primary mr-2">•</div>
-                  <span className="text-gray-300">Regular updates on emerging AI technologies</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="text-matrix-primary mr-2">•</div>
-                  <span className="text-gray-300">No recurring payments or subscription fees</span>
-                </li>
-              </ul>
-              
-              <button 
-                onClick={handlePayment}
-                disabled={isLoading || !stripeJs}
-                className={`w-full py-3 rounded-md font-medium transition-all bg-matrix-primary text-black hover:bg-opacity-90 ${
-                  (isLoading || !stripeJs) ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                {isLoading ? "Processing..." : !stripeJs ? "Loading Stripe..." : "Purchase Now"}
-              </button>
-              
-              <p className="text-sm text-gray-400 mt-4 text-center">
-                Secure payment processing through Stripe
-              </p>
-            </div>
+            <ul className="space-y-2 mb-6">
+              <li className="flex items-center text-gray-300">
+                <svg
+                  className="h-5 w-5 text-matrix-primary mr-2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M5 13l4 4L19 7"></path>
+                </svg>
+                Unlimited access to all resources
+              </li>
+              <li className="flex items-center text-gray-300">
+                <svg
+                  className="h-5 w-5 text-matrix-primary mr-2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M5 13l4 4L19 7"></path>
+                </svg>
+                Priority support
+              </li>
+              <li className="flex items-center text-gray-300">
+                <svg
+                  className="h-5 w-5 text-matrix-primary mr-2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M5 13l4 4L19 7"></path>
+                </svg>
+                Early access to new features
+              </li>
+            </ul>
+            <button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="w-full bg-matrix-primary text-black font-semibold py-2 px-4 rounded-md hover:bg-matrix-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Processing...' : 'Subscribe Now'}
+            </button>
           </div>
         </div>
+
+        {errorMsg && (
+          <div className="text-red-500 text-center mt-4">
+            {errorMsg}
+          </div>
+        )}
       </div>
-      <Footer />
     </div>
   );
 };
