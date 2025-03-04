@@ -19,61 +19,22 @@ const Payment = () => {
   useEffect(() => {
     const loadStripe = () => {
       const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-      console.log("Stripe key starts with:", publishableKey?.substring(0, 10) + "...");
+      if (!publishableKey) {
+        console.error("Stripe publishable key is not set");
+        return;
+      }
       
-      if (window.Stripe) {
-        console.log("Stripe.js already loaded, initializing...");
-        try {
-          const stripeInstance = window.Stripe(publishableKey);
-          setStripeJs(stripeInstance);
-          console.log("Stripe initialized successfully");
-        } catch (error) {
-          console.error("Error initializing Stripe:", error);
-        }
-      } else {
-        console.log("Stripe.js not loaded yet, setting up listener...");
-        // If Stripe.js hasn't loaded yet, check if script exists and add listener
-        const stripeScript = document.querySelector('script[src*="stripe.com/v3"]');
-        
-        if (stripeScript) {
-          stripeScript.addEventListener('load', () => {
-            console.log("Stripe.js script loaded via event listener");
-            if (window.Stripe) {
-              try {
-                const stripeInstance = window.Stripe(publishableKey);
-                setStripeJs(stripeInstance);
-                console.log("Stripe initialized successfully via event listener");
-              } catch (error) {
-                console.error("Error initializing Stripe via event listener:", error);
-              }
-            } else {
-              console.error("window.Stripe still not available after script load event");
-            }
-          });
-        } else {
-          console.error("Stripe script not found in document");
-          // Create and append the script if it doesn't exist
-          const script = document.createElement('script');
-          script.src = 'https://js.stripe.com/v3/';
-          script.async = true;
-          script.onload = () => {
-            console.log("Dynamically added Stripe.js loaded");
-            if (window.Stripe) {
-              try {
-                const stripeInstance = window.Stripe(publishableKey);
-                setStripeJs(stripeInstance);
-                console.log("Stripe initialized successfully via dynamic script");
-              } catch (error) {
-                console.error("Error initializing Stripe via dynamic script:", error);
-              }
-            }
-          };
-          document.head.appendChild(script);
-        }
+      try {
+        const stripeInstance = window.Stripe(publishableKey);
+        setStripeJs(stripeInstance);
+        console.log("Stripe initialized successfully");
+      } catch (error) {
+        console.error("Error initializing Stripe:", error);
       }
     };
     
-    loadStripe();
+    // Wait a short moment to ensure Stripe.js is loaded
+    setTimeout(loadStripe, 100);
   }, []);
 
   // Function to handle direct checkout with Stripe
