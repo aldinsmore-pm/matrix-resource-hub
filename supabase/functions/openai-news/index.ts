@@ -1,15 +1,20 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// CORS headers for local development
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*', // For development - restrict this in production
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
   try {
@@ -53,7 +58,10 @@ serve(async (req) => {
     console.log(`Returning ${newsItems.length} curated news items with verified links`);
     
     return new Response(JSON.stringify({ data: newsItems }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
       status: 200,
     });
   } catch (error) {
@@ -71,7 +79,10 @@ serve(async (req) => {
       data: fallbackNews,
       error: error.message
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
       status: 200,
     });
   }

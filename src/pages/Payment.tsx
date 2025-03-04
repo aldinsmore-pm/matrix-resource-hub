@@ -1,19 +1,95 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { supabase } from "../lib/supabase";
 
+// Add type declaration for Stripe
+declare global {
+  interface Window {
+    Stripe?: (key: string) => any;
+  }
+}
+
 const Payment = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [stripeJs, setStripeJs] = useState<any>(null);
+  
+  // Load Stripe.js on component mount
+  useEffect(() => {
+    const loadStripe = () => {
+      const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+      console.log("Stripe key starts with:", publishableKey?.substring(0, 10) + "...");
+      
+      if (window.Stripe) {
+        console.log("Stripe.js already loaded, initializing...");
+        try {
+          const stripeInstance = window.Stripe(publishableKey);
+          setStripeJs(stripeInstance);
+          console.log("Stripe initialized successfully");
+        } catch (error) {
+          console.error("Error initializing Stripe:", error);
+        }
+      } else {
+        console.log("Stripe.js not loaded yet, setting up listener...");
+        // If Stripe.js hasn't loaded yet, check if script exists and add listener
+        const stripeScript = document.querySelector('script[src*="stripe.com/v3"]');
+        
+        if (stripeScript) {
+          stripeScript.addEventListener('load', () => {
+            console.log("Stripe.js script loaded via event listener");
+            if (window.Stripe) {
+              try {
+                const stripeInstance = window.Stripe(publishableKey);
+                setStripeJs(stripeInstance);
+                console.log("Stripe initialized successfully via event listener");
+              } catch (error) {
+                console.error("Error initializing Stripe via event listener:", error);
+              }
+            } else {
+              console.error("window.Stripe still not available after script load event");
+            }
+          });
+        } else {
+          console.error("Stripe script not found in document");
+          // Create and append the script if it doesn't exist
+          const script = document.createElement('script');
+          script.src = 'https://js.stripe.com/v3/';
+          script.async = true;
+          script.onload = () => {
+            console.log("Dynamically added Stripe.js loaded");
+            if (window.Stripe) {
+              try {
+                const stripeInstance = window.Stripe(publishableKey);
+                setStripeJs(stripeInstance);
+                console.log("Stripe initialized successfully via dynamic script");
+              } catch (error) {
+                console.error("Error initializing Stripe via dynamic script:", error);
+              }
+            }
+          };
+          document.head.appendChild(script);
+        }
+      }
+    };
+    
+    loadStripe();
+  }, []);
 
-  // Function to handle one-time purchase via Stripe
-  const handlePayment = async () => {
+  // Function to handle direct checkout with Stripe
+  const handleDirectCheckout = async () => {
     setIsLoading(true);
     
     try {
-      toast.info("Preparing checkout...");
+      toast.info("Preparing Stripe checkout...");
+      
+      // Check if Stripe is loaded
+      if (!stripeJs) {
+        toast.error("Stripe.js is still loading. Please try again in a moment.");
+        console.error("Stripe.js not initialized when attempting checkout");
+        setIsLoading(false);
+        return;
+      }
       
       // Get the current URL for the return URL
       const returnUrl = window.location.origin + "/payment-success";
@@ -27,41 +103,44 @@ const Payment = () => {
         return;
       }
       
-      console.log("Calling create-checkout function with:", {
-        returnUrl
-      });
+      console.log("Creating checkout session with Stripe...");
+      const priceId = import.meta.env.VITE_STRIPE_PRICE_ID;
+      console.log("Using price ID:", priceId);
       
-      // Use the Supabase client to call the Edge Function
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          returnUrl
-        }
-      });
+      // Prepare the checkout parameters
+      const checkoutParams = {
+        lineItems: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        successUrl: returnUrl,
+        cancelUrl: window.location.origin,
+        customerEmail: userData.user.email,
+      };
+      
+      console.log("Checkout parameters:", JSON.stringify(checkoutParams));
+      
+      // Redirect to Stripe checkout
+      const { error } = await stripeJs.redirectToCheckout(checkoutParams);
       
       if (error) {
-        console.error("Checkout function error:", error);
-        toast.error(`Failed to create checkout session: ${error.message}`);
+        console.error("Stripe redirect error:", error);
+        toast.error(`Stripe error: ${error.message}`);
         setIsLoading(false);
-        return;
       }
-      
-      console.log("Checkout response data:", data);
-      
-      if (!data || !data.url) {
-        toast.error("Failed to create checkout session: No URL returned");
-        console.error("Invalid response from checkout function:", data);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Redirect to Stripe Checkout
-      console.log("Redirecting to Stripe checkout:", data.url);
-      window.location.href = data.url;
     } catch (error) {
-      console.error("Checkout error:", error);
-      toast.error(error.message || "Failed to process payment. Please try again.");
+      console.error("Direct checkout error:", error);
+      toast.error(`Error: ${error.message}`);
       setIsLoading(false);
     }
+  };
+
+  // Function to handle payment via Stripe
+  const handlePayment = async () => {
+    return handleDirectCheckout();
   };
 
   return (
@@ -110,12 +189,12 @@ const Payment = () => {
               
               <button 
                 onClick={handlePayment}
-                disabled={isLoading}
+                disabled={isLoading || !stripeJs}
                 className={`w-full py-3 rounded-md font-medium transition-all bg-matrix-primary text-black hover:bg-opacity-90 ${
-                  isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  (isLoading || !stripeJs) ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
-                {isLoading ? "Processing..." : "Purchase Now"}
+                {isLoading ? "Processing..." : !stripeJs ? "Loading Stripe..." : "Purchase Now"}
               </button>
               
               <p className="text-sm text-gray-400 mt-4 text-center">

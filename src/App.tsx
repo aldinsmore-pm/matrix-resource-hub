@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,6 +18,21 @@ import { supabase, isSubscribed } from "./lib/supabase";
 
 // Store auth state globally to prevent multiple redirects
 let authCheckInProgress = false;
+
+// Check if the recent payment flag has expired (1 hour)
+const checkRecentPaymentExpiration = () => {
+  const timestamp = localStorage.getItem('recent_payment_timestamp');
+  if (timestamp) {
+    const paymentTime = parseInt(timestamp, 10);
+    const currentTime = Date.now();
+    // Check if more than 1 hour has passed (3600000 ms)
+    if (currentTime - paymentTime > 3600000) {
+      console.log("App: Recent payment flag expired, removing");
+      localStorage.removeItem('recent_payment');
+      localStorage.removeItem('recent_payment_timestamp');
+    }
+  }
+};
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const [loading, setLoading] = useState(true);
@@ -66,6 +80,15 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
         console.log("ProtectedRoute: User authenticated:", userData.user.id);
         setAuthenticated(true);
         
+        // Check if we have a recent payment flag in localStorage
+        const recentPayment = localStorage.getItem('recent_payment');
+        if (recentPayment) {
+          console.log("ProtectedRoute: Found recent payment flag, allowing access");
+          setSubscribed(true);
+          authCheckInProgress = false;
+          return;
+        }
+        
         // Check subscription status
         console.log("ProtectedRoute: Checking subscription status");
         const hasSubscription = await isSubscribed();
@@ -81,15 +104,17 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
       }
     };
 
-    // Add a timeout to prevent infinite loading
+    // Set a timeout to stop the loading state if authentication takes too long
     const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.log("ProtectedRoute: Timeout reached, stopping loading state");
+      console.log("ProtectedRoute: Timeout reached, checking auth state");
+      // Only stop loading if we don't have a user or subscription yet
+      if (!authenticated) {
+        console.log("ProtectedRoute: No user found after timeout, stopping loading");
         setLoading(false);
-        setAuthenticated(false);
-        authCheckInProgress = false;
+      } else {
+        console.log("ProtectedRoute: User is authenticated, keeping session active");
       }
-    }, 5000); // 5 second timeout
+    }, 8000); // Extended timeout
 
     checkAuth();
 
@@ -136,6 +161,9 @@ const App = () => {
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
+    // Check if the recent payment flag has expired
+    checkRecentPaymentExpiration();
+    
     const initializeAuth = async () => {
       try {
         console.log("App: Initializing authentication");

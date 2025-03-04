@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -9,79 +8,126 @@ import { toast } from "sonner";
 const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
+  const [processingComplete, setProcessingComplete] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // When component mounts, set a flag in localStorage to indicate recent payment
+    // This flag will let the user access the dashboard even if the subscription record
+    // hasn't been created in the database yet by the webhook
+    localStorage.setItem('recent_payment', 'true');
+    
+    // Set the flag to expire after 1 hour (in milliseconds)
+    localStorage.setItem('recent_payment_timestamp', Date.now().toString());
+
+    // Declare a flag to prevent multiple state updates after component unmounts
+    let isMounted = true;
+
     const checkPaymentStatus = async () => {
+      if (processingComplete) return; // Prevent extra checks if already complete
+
       try {
-        // Verify user authentication
-        const { data } = await supabase.auth.getUser();
+        console.log("Starting payment check...");
         
-        if (!data.user) {
-          navigate("/login");
+        // Get the current session - this is crucial for RLS policies
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          toast.error("Authentication session error. Please log in again.");
+          if (isMounted) {
+            setProcessingComplete(true);
+            navigate("/login");
+          }
           return;
         }
         
-        console.log("Checking subscription status for user:", data.user.id);
-        
-        // Check if the user has an active subscription
-        const { data: subscriptions, error } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', data.user.id)
-          .eq('status', 'active')
-          .single();
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error checking subscription:", error);
-          toast.error("Failed to verify your purchase status. Please contact support.");
+        if (!sessionData.session) {
+          console.log("No active session found, redirecting to login");
+          toast.error("Your session has expired. Please log in again.");
+          if (isMounted) {
+            setProcessingComplete(true);
+            navigate("/login");
+          }
+          return;
         }
         
-        // If user has subscription, redirect to dashboard after 3 seconds
-        if (subscriptions) {
+        // Verify user authentication with the session
+        const { data: userData, error: authError } = await supabase.auth.getUser(sessionData.session.access_token);
+        
+        if (authError) {
+          console.error("Authentication error:", authError);
+          toast.error("Authentication error. Please log in again.");
+          if (isMounted) {
+            setProcessingComplete(true);
+            navigate("/login");
+          }
+          return;
+        }
+        
+        if (!userData.user) {
+          console.log("No user found, redirecting to login");
+          toast.error("You need to be logged in to complete this process.");
+          if (isMounted) {
+            setProcessingComplete(true);
+            navigate("/login");
+          }
+          return;
+        }
+        
+        console.log("Checking subscription status for user:", userData.user.id);
+        
+        // Check if the user has an active subscription
+        const { data: subscriptions, error: subError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userData.user.id)
+          .eq('status', 'active');
+        
+        if (subError) {
+          console.error("Error checking subscription:", subError);
+          // Only consider this a fatal error if it's not just "not found"
+          if (subError.code !== 'PGRST116') { 
+            toast.error("Failed to verify your purchase status. Please contact support.");
+            if (isMounted) setProcessingComplete(true);
+          }
+        }
+        
+        // If user has subscription, redirect to dashboard
+        if (subscriptions && subscriptions.length > 0) {
+          console.log("Active subscription found:", subscriptions[0].id);
           toast.success("Your purchase has been confirmed!");
-          console.log("Subscription found, redirecting to dashboard soon");
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 3000);
+          
+          if (isMounted) {
+            setProcessingComplete(true);
+            // Delay navigation to allow toast to be seen
+            setTimeout(() => {
+              navigate("/dashboard");
+            }, 3000);
+          }
         } else {
           // If we don't find a subscription yet, it might still be processing
           console.log(`Attempt ${retryCount + 1}: No active subscription found yet, retrying...`);
           
-          if (retryCount === 0) {
+          if (retryCount === 0 && isMounted) {
             toast.info("Your purchase is being processed. This may take a moment...");
           }
           
           // Only retry up to 5 times (15 seconds total)
-          if (retryCount < 5) {
+          if (retryCount < 5 && !processingComplete && isMounted) {
             setRetryCount(prev => prev + 1);
+            // Use setTimeout to delay next check
             setTimeout(() => {
-              checkPaymentStatus();
+              if (isMounted && !processingComplete) {
+                checkPaymentStatus();
+              }
             }, 3000);
-          } else {
-            // After 5 retries, create a manual subscription record
-            console.log("Maximum retries reached, creating manual subscription record");
-            toast.info("Finalizing your purchase...");
+          } else if (!processingComplete && isMounted) {
+            console.log("Maximum retries reached, redirecting to dashboard anyway");
+            toast.info("Payment process complete. Redirecting to dashboard...");
             
-            // Create a subscription manually
-            const { data: newSubscription, error: createError } = await supabase
-              .from('subscriptions')
-              .insert({
-                user_id: data.user.id,
-                plan: 'one-time',
-                status: 'active',
-                current_period_start: new Date().toISOString(),
-                current_period_end: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString() // 100 years
-              })
-              .select()
-              .single();
-              
-            if (createError) {
-              console.error("Error creating subscription:", createError);
-              toast.error("Failed to finalize your purchase. Please contact support.");
-            } else {
-              console.log("Manual subscription created:", newSubscription);
-              toast.success("Your purchase has been confirmed!");
+            if (isMounted) {
+              setProcessingComplete(true);
               setTimeout(() => {
                 navigate("/dashboard");
               }, 2000);
@@ -91,13 +137,22 @@ const PaymentSuccess = () => {
       } catch (error) {
         console.error("Error verifying payment:", error);
         toast.error("An error occurred while verifying your payment.");
+        if (isMounted) setProcessingComplete(true);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     
-    checkPaymentStatus();
-  }, [navigate, retryCount]);
+    // Only start the process if not already completed
+    if (!processingComplete) {
+      checkPaymentStatus();
+    }
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, retryCount, processingComplete]);
 
   return (
     <div className="min-h-screen bg-matrix-bg">

@@ -91,28 +91,72 @@ const Dashboard = () => {
           navigate("/login");
           return;
         }
-        console.log("User authenticated, loading profile data...");
-        const userProfile = await getProfile();
-        if (!userProfile) {
-          throw new Error("Failed to load user profile");
-        }
-        setProfile(userProfile);
-        console.log("Loading subscription data...");
-        const userSubscription = await getSubscription();
-        setSubscription(userSubscription);
 
-        console.log("Loading recent resources...");
-        const {
-          data: resourcesData,
-          error: resourcesError
-        } = await supabase.from('resources').select('id, title, category, created_at, published').order('created_at', {
-          ascending: false
-        }).limit(5);
-        if (resourcesError) {
-          console.error("Error loading resources:", resourcesError);
-          throw resourcesError;
+        // Set a minimal backup profile in case loading fails
+        const minimalProfile = {
+          id: authData.user.id,
+          email: authData.user.email || '',
+          first_name: null,
+          last_name: null,
+          avatar_url: null
+        };
+        
+        // Try to load the profile
+        try {
+          console.log("User authenticated, loading profile data...");
+          const userProfile = await getProfile();
+          if (userProfile) {
+            setProfile(userProfile);
+          } else {
+            console.log("No profile found, using minimal profile");
+            setProfile(minimalProfile);
+          }
+        } catch (profileError) {
+          console.error("Error loading profile:", profileError);
+          toast.error("Could not load your profile data");
+          // Use minimal profile as fallback
+          setProfile(minimalProfile);
         }
-        setRecentResources(resourcesData || []);
+        
+        // Try to load subscription
+        try {
+          console.log("Loading subscription data...");
+          const userSubscription = await getSubscription();
+          setSubscription(userSubscription);
+        } catch (subscriptionError) {
+          console.error("Error loading subscription:", subscriptionError);
+          // Continue without subscription data
+          setSubscription(null);
+        }
+
+        // Try to load resources
+        try {
+          console.log("Loading recent resources...");
+          const {
+            data: resourcesData,
+            error: resourcesError
+          } = await supabase.from('resources').select('id, title, category, created_at, published').order('created_at', {
+            ascending: false
+          }).limit(5);
+          
+          if (resourcesError) {
+            if (resourcesError.code === '42P01') {
+              console.log("Resources table doesn't exist yet, showing empty list");
+              setRecentResources([]);
+            } else {
+              console.error("Error loading resources:", resourcesError);
+              throw resourcesError;
+            }
+          } else {
+            setRecentResources(resourcesData || []);
+          }
+        } catch (resourcesError) {
+          console.error("Error loading resources:", resourcesError);
+          // Don't fail the entire dashboard load, just show empty resources
+          setRecentResources([]);
+          toast.error("Could not load your recent resources");
+        }
+        
         console.log("Data loading complete");
       } catch (error: any) {
         console.error("Error loading user data:", error);

@@ -1,9 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://blnaxvnuzikfelwcwzft.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsbmF4dm51emlrZmVsd2N3emZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2OTg4MjEsImV4cCI6MjA1NjI3NDgyMX0.cQHbAQPEdQKqijeNdZ-KIY3U9vCj8gfEk6wNJTtABtw';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Configure the client with options for local development
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+  global: {
+    // Add custom headers for working with Edge Functions
+    headers: {
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+      'apikey': supabaseAnonKey,
+    }
+  },
+});
 
 console.log("Supabase client initialized");
 console.log("API URL:", supabaseUrl);
@@ -41,16 +55,36 @@ export async function getProfile(): Promise<Profile | null> {
     }
     
     console.log("User found, fetching profile...");
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.user.id)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching profile:", error);
+        // Create a minimal profile if none exists or if there's a table error
+        if (error.code === 'PGRST116' || error.code === '42P01') {
+          // Either no profile exists or the table doesn't exist
+          console.log("Creating default profile object since profiles table doesn't exist or profile not found");
+          return {
+            id: user.user.id,
+            email: user.user.email || '',
+            first_name: null,
+            last_name: null,
+            avatar_url: null
+          };
+        }
+        throw error;
+      }
       
-    if (error) {
-      console.error("Error fetching profile:", error);
-      // Create a minimal profile if none exists
-      if (error.code === 'PGRST116') {
+      console.log("Profile fetched successfully");
+      return data;
+    } catch (error: any) {
+      // Handle the case where the profiles table doesn't exist
+      if (error.code === '42P01') { // relation does not exist
+        console.log("Profiles table doesn't exist, creating default profile");
         return {
           id: user.user.id,
           email: user.user.email || '',
@@ -61,12 +95,16 @@ export async function getProfile(): Promise<Profile | null> {
       }
       throw error;
     }
-    
-    console.log("Profile fetched successfully");
-    return data;
   } catch (error) {
     console.error("getProfile error:", error);
-    throw error;
+    // Return a basic profile instead of throwing to avoid breaking the dashboard
+    return {
+      id: 'unknown',
+      email: 'unknown',
+      first_name: null,
+      last_name: null,
+      avatar_url: null
+    };
   }
 }
 
@@ -139,7 +177,26 @@ export async function isSubscribed(): Promise<boolean> {
       return false;
     }
     
+    // Try different methods to check for subscription, starting with database function
     console.log("User found, checking purchase status for:", userData.user.id);
+    
+    try {
+      // Method 1: Try using the database function
+      const { data: hasSubData, error: hasSubError } = await supabase
+        .rpc('check_subscription', { uid: userData.user.id });
+        
+      if (!hasSubError && hasSubData === true) {
+        console.log("Database function confirms active subscription");
+        return true;
+      }
+      
+      console.log("Database function check result:", hasSubData, hasSubError);
+    } catch (functionError) {
+      console.log("Error using database function:", functionError);
+      // Continue to next method
+    }
+    
+    // Method 2: Try direct query (original method)
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
@@ -149,6 +206,23 @@ export async function isSubscribed(): Promise<boolean> {
       
     if (error) {
       console.error("Error checking purchase status:", error);
+      
+      // Method 3: Try a simpler query if the original failed (might be permissions issue)
+      try {
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('subscriptions')
+          .select('id, status')
+          .eq('user_id', userData.user.id)
+          .maybeSingle();
+          
+        if (!simpleError && simpleData?.status === 'active') {
+          console.log("Simple query found active subscription");
+          return true;
+        }
+      } catch (simpleQueryError) {
+        console.log("Simple query error:", simpleQueryError);
+      }
+      
       return false;
     }
     
@@ -160,10 +234,20 @@ export async function isSubscribed(): Promise<boolean> {
     // Check if the subscription is still valid
     const now = new Date();
     const endDate = new Date(data.current_period_end);
-    const isValid = endDate > now;
+    const cancelAt = data.cancel_at ? new Date(data.cancel_at) : null;
     
-    console.log("Purchase status:", isValid ? "Active" : "Expired", "until", endDate.toISOString());
-    return isValid;
+    if (now > endDate) {
+      console.log("Subscription expired");
+      return false;
+    }
+    
+    if (cancelAt && now > cancelAt) {
+      console.log("Subscription canceled");
+      return false;
+    }
+    
+    console.log("Active purchase confirmed");
+    return true;
   } catch (error) {
     console.error("isSubscribed error:", error);
     // Return false instead of throwing to handle the case gracefully
