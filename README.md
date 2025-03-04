@@ -47,9 +47,9 @@ src/lib/
 
 supabase/
 ├── functions/            # Edge Functions
-│   ├── create-checkout/  # Stripe checkout session creation
-│   ├── stripe-webhook/   # Stripe webhook handler
-│   ├── debug-webhook/    # Webhook debugging utility
+│   ├── create-stripe-customer/  # Create Stripe customer on signup
+│   ├── manage-subscription/     # Redirect to Stripe Customer Portal
+│   ├── simple-stripe-webhook/   # Stripe webhook handler
 │   ├── newsapi/         # News API integration
 │   └── openai-news/     # OpenAI integration for news
 ├── migrations/          # Database migrations
@@ -265,124 +265,72 @@ scripts/
 
 ## Stripe Integration & Payment Processing
 
-### Checkout Flow
-1. **Checkout Session Creation**
-   - When a user initiates a subscription:
-     - Frontend calls the `create-checkout` Edge Function
-     - Function creates a Stripe Checkout Session with the user's ID
-     - User is redirected to Stripe's hosted checkout page
+### Subscription Flow
+1. **Customer Creation**
+   - When a user signs up:
+     - Database trigger creates a Stripe customer
+     - User ID is stored in the Stripe customer metadata
 
-2. **Webhook Processing**
-   - Stripe webhooks are handled by the `stripe-webhook` Edge Function
+2. **Subscription Management**
+   - Users manage subscriptions through the Stripe Customer Portal:
+     - `manage-subscription` Edge Function creates a portal session
+     - Users can update payment methods, change plans, or cancel
+
+3. **Webhook Processing**
+   - Stripe webhooks are handled by the `simple-stripe-webhook` Edge Function
    - Key events processed:
-     - `checkout.session.completed`: Creates initial subscription
+     - `customer.subscription.created`: Creates initial subscription
      - `customer.subscription.updated`: Updates subscription status
      - `customer.subscription.deleted`: Handles cancellations
-
-3. **Subscription Management**
-   ```typescript
-   // Example subscription object structure
-   interface Subscription {
-     id: string;
-     user_id: string;
-     plan: string;
-     status: 'active' | 'canceled' | 'expired' | 'trialing';
-     current_period_start: string;
-     current_period_end: string;
-   }
-   ```
-
-### Testing & Debugging
-- Debug webhook endpoint for local testing
-- Stripe CLI integration for webhook forwarding
-- Test scripts for subscription creation and management
-
-## Supabase User Management & Database Structure
-
-### User Authentication Flow
-1. **Sign Up Process**
-   - User creates account through Supabase Auth
-   - Trigger automatically creates profile record
-   - Profile linked to auth.users through RLS policies
-
-2. **Profile Management**
-   ```sql
-   -- Profile table structure
-   CREATE TABLE public.profiles (
-     id UUID PRIMARY KEY REFERENCES auth.users(id),
-     email TEXT,
-     first_name TEXT,
-     last_name TEXT,
-     avatar_url TEXT,
-     created_at TIMESTAMPTZ,
-     updated_at TIMESTAMPTZ
-   );
-   ```
-
-### Subscription Management
-1. **Database Structure**
-   ```sql
-   -- Subscriptions table structure
-   CREATE TABLE public.subscriptions (
-     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-     user_id UUID REFERENCES auth.users(id),
-     plan TEXT NOT NULL,
-     status TEXT CHECK (status IN ('active', 'canceled', 'expired', 'trialing')),
-     current_period_start TIMESTAMPTZ,
-     current_period_end TIMESTAMPTZ,
-     stripe_subscription_id TEXT
-   );
-   ```
-
-2. **Row Level Security**
-   ```sql
-   -- Example RLS policies
-   CREATE POLICY "Users can view their own subscriptions"
-   ON public.subscriptions FOR SELECT
-   USING (auth.uid() = user_id);
-
-   CREATE POLICY "Only authenticated users can insert"
-   ON public.subscriptions FOR INSERT
-   WITH CHECK (auth.uid() = user_id);
-   ```
-
-3. **Subscription Checking**
-   ```sql
-   -- Function to check active subscription
-   CREATE FUNCTION public.check_subscription(uid UUID) RETURNS boolean
-   LANGUAGE plpgsql SECURITY DEFINER AS $$
-   BEGIN
-     RETURN EXISTS (
-       SELECT 1 FROM subscriptions
-       WHERE user_id = uid
-       AND status = 'active'
-       AND current_period_end > now()
-     );
-   END;
-   $$;
-   ```
+     - `invoice.payment_succeeded`: Processes successful payments
+     - `invoice.payment_failed`: Handles failed payments
 
 ### Edge Functions
 1. **Stripe Integration Functions**
-   - `create-checkout`: Creates Stripe checkout sessions
-   - `stripe-webhook`: Processes Stripe webhook events
-   - `debug-webhook`: Helps debug webhook issues
+   - `create-stripe-customer`: Creates Stripe customers when users sign up
+   - `manage-subscription`: Redirects users to Stripe Customer Portal
+   - `simple-stripe-webhook`: Processes Stripe webhook events
 
 2. **Resource Access**
    - Protected routes check subscription status
    - RLS policies enforce access control
    - Automatic profile creation on signup
 
-### Testing & Verification
-1. **Subscription Testing**
-   - Test scripts for subscription creation
-   - Webhook testing utilities
-   - RLS policy verification
+### Supabase Edge Functions
+```
+supabase/functions/
+├── create-stripe-customer/
+│   ├── index.ts                      # Stripe customer creation
+│   └── function.ts                   # Function configuration
+├── manage-subscription/
+│   ├── index.ts                      # Stripe Customer Portal redirection
+│   └── function.ts                   # Function configuration
+├── simple-stripe-webhook/
+│   ├── index.ts                      # Stripe webhook event handling
+│   └── function.ts                   # Webhook configuration
+├── newsapi/
+│   ├── index.ts                      # News API integration
+│   └── function.ts                   # API configuration
+└── openai-news/
+    ├── index.ts                      # OpenAI integration
+    └── function.ts                   # OpenAI configuration
+```
 
-2. **User Management Testing**
-   - Profile creation verification
-   - Authentication flow testing
-   - Access control validation
+### Stripe Integration
+```
+src/components/
+├── subscription/
+│   └── SubscriptionPage.tsx          # Subscription UI and Customer Portal flow
+└── Payment.tsx                       # Payment processing component
+
+src/lib/
+└── supabase.ts                       # Subscription and profile management functions
+
+scripts/
+├── test-complete-subscription.js     # Subscription system testing
+├── check-subscriptions.js            # Subscription verification
+└── forward-stripe-events.sh          # Local webhook forwarding
+```
 
 ## Environment Variables
 
@@ -455,15 +403,15 @@ scripts/
 ### Supabase Edge Functions
 ```
 supabase/functions/
-├── create-checkout/
-│   ├── index.ts                      # Stripe checkout session creation
+├── create-stripe-customer/
+│   ├── index.ts                      # Stripe customer creation
 │   └── function.ts                   # Function configuration
-├── stripe-webhook/
+├── manage-subscription/
+│   ├── index.ts                      # Stripe Customer Portal redirection
+│   └── function.ts                   # Function configuration
+├── simple-stripe-webhook/
 │   ├── index.ts                      # Stripe webhook event handling
 │   └── function.ts                   # Webhook configuration
-├── debug-webhook/
-│   ├── index.ts                      # Webhook debugging utilities
-│   └── function.ts                   # Debug configuration
 ├── newsapi/
 │   ├── index.ts                      # News API integration
 │   └── function.ts                   # API configuration
@@ -476,15 +424,14 @@ supabase/functions/
 ```
 src/components/
 ├── subscription/
-│   └── SubscriptionPage.tsx          # Subscription UI and checkout flow
+│   └── SubscriptionPage.tsx          # Subscription UI and Customer Portal flow
 └── Payment.tsx                       # Payment processing component
 
 src/lib/
 └── supabase.ts                       # Subscription and profile management functions
 
 scripts/
-├── test-webhook.js                   # Stripe webhook testing
-├── test-stripe-webhook.js            # Advanced webhook testing
+├── test-complete-subscription.js     # Subscription system testing
 ├── check-subscriptions.js            # Subscription verification
 └── forward-stripe-events.sh          # Local webhook forwarding
 ```
