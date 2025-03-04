@@ -7,6 +7,29 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.gpteng.co; connect-src 'self' https://bobnfoppduagvvaktebt.supabase.co https://api.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; frame-src https://js.stripe.com;"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
   "env": {
     "VITE_SUPABASE_URL": "https://bobnfoppduagvvaktebt.supabase.co",
     "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvYm5mb3BwZHVhZ3Z2YWt0ZWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMjQxMDMsImV4cCI6MjA1NjYwMDEwM30.Ivm644sPc-cqerjHDq7-4GAdZtICtFXR23mc-SGV5T4",
