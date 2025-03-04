@@ -33,30 +33,29 @@ const Payment = () => {
         return;
       }
 
+      // Create Checkout Session on the server
+      const { data: sessionData, error: sessionError } = await supabase.functions.invoke('create-stripe-customer', {
+        body: {
+          priceId: import.meta.env.VITE_STRIPE_PRICE_ID,
+          successUrl: getCurrentUrl('/dashboard'),
+          cancelUrl: getCurrentUrl('/payment'),
+          clientReferenceId: user.id
+        }
+      });
+
+      if (sessionError || !sessionData?.sessionId) {
+        throw new Error(sessionError?.message || 'Failed to create checkout session');
+      }
+
       // Load Stripe instance
       const stripe = await stripePromise;
       if (!stripe) {
         throw new Error('Stripe failed to initialize');
       }
 
-      // Get the price ID from environment variables
-      const priceId = import.meta.env.VITE_STRIPE_PRICE_ID;
-      if (!priceId) {
-        throw new Error('Stripe price ID not configured');
-      }
-
-      // Create Stripe Checkout session
+      // Redirect to Checkout
       const { error } = await stripe.redirectToCheckout({
-        lineItems: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        mode: 'subscription',
-        successUrl: getCurrentUrl('/dashboard'),
-        cancelUrl: getCurrentUrl('/payment'),
-        clientReferenceId: user.id, // Pass the user ID to identify the customer
+        sessionId: sessionData.sessionId
       });
 
       if (error) {
