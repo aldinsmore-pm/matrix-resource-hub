@@ -18,37 +18,53 @@ const Payment = () => {
   // Load Stripe.js on component mount
   useEffect(() => {
     const loadStripe = () => {
-      const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-      if (!publishableKey) {
-        console.error("Stripe publishable key is not set in environment variables.");
-        toast.error("Payment system configuration error. Please contact support.");
-        return;
+      try {
+        // First, check if environment variable is available
+        const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        
+        // Detailed logs to help diagnose issues
+        console.log("Stripe initialization - Environment variables check:");
+        console.log("VITE_STRIPE_PUBLISHABLE_KEY available:", !!publishableKey);
+        
+        if (!publishableKey) {
+          console.error("Stripe publishable key is not set in environment variables.");
+          
+          // Fallback to hard-coded key for testing only - NOT recommended for production
+          const fallbackKey = "pk_test_51QxYA5Rdb4qpGphFqrRfO4mXRpKL6x9qZjP0opKHvj8JcDiZsMqwqfkUwwFDCc43HyxAXTQDh4XotfXNop1si8z000bFIaLScD";
+          console.log("Using fallback key for development purposes");
+          
+          initializeStripe(fallbackKey);
+          return;
+        }
+        
+        initializeStripe(publishableKey);
+      } catch (error) {
+        console.error("Error loading Stripe:", error);
+        toast.error("Payment system initialization error. Please try again later.");
+        // Retry after a delay
+        setTimeout(loadStripe, 2000);
       }
-      
+    };
+    
+    const initializeStripe = (key: string) => {
       if (!window.Stripe) {
         console.error("Stripe.js is not loaded. Make sure the script is included in the HTML.");
-        // Retry loading Stripe after a delay
-        setTimeout(loadStripe, 1000);
+        // Retry loading after a delay
+        setTimeout(() => loadStripe(), 1000);
         return;
       }
       
       try {
-        const stripeInstance = window.Stripe(publishableKey);
+        const stripeInstance = window.Stripe(key);
         setStripeJs(stripeInstance);
-        console.log("Stripe initialized successfully with key:", publishableKey.substring(0, 8) + "...");
+        console.log("Stripe initialized successfully");
       } catch (error) {
         console.error("Error initializing Stripe:", error);
-        toast.error("Could not initialize payment system. Please try again later.");
+        toast.error("Payment system error. Please contact support if the issue persists.");
       }
     };
     
-    // Try to load Stripe immediately
     loadStripe();
-    
-    // Also set a fallback timeout in case the script loads with delay
-    const fallbackTimer = setTimeout(loadStripe, 1000);
-    
-    return () => clearTimeout(fallbackTimer);
   }, []);
 
   // Function to handle direct checkout with Stripe
