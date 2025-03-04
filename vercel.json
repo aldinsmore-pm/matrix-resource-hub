@@ -12,5 +12,15 @@
     "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvYm5mb3BwZHVhZ3Z2YWt0ZWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMjQxMDMsImV4cCI6MjA1NjYwMDEwM30.Ivm644sPc-cqerjHDq7-4GAdZtICtFXR23mc-SGV5T4",
     "VITE_STRIPE_PUBLISHABLE_KEY": "pk_test_51QxYA5Rdb4qpGphFqrRfO4mXRpKL6x9qZjP0opKHvj8JcDiZsMqwqfkUwwFDCc43HyxAXTQDh4XotfXNop1si8z000bFIaLScD",
     "VITE_STRIPE_PRICE_ID": "price_1QydgwRdb4qpGphFz38JIsIL"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "fix/stripe-subscription-updates": true
+    }
+  },
+  "github": {
+    "enabled": true,
+    "silent": false
   }
 }
