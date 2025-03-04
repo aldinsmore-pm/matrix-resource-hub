@@ -1,69 +1,504 @@
-# Welcome to your Lovable project
+# Matrix Resource Hub
 
-## Project info
+A modern web application for managing and accessing AI implementation resources and tools. Built with React, Supabase, and Stripe integration.
 
-**URL**: https://lovable.dev/projects/589d003d-74bc-4c45-9525-8f7f826ed286
+## Project Overview
 
-## How can I edit this code?
+Matrix Resource Hub is a subscription-based platform that provides access to curated AI resources, implementation guides, and tools. The application features user authentication, subscription management, and a dynamic resource library.
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React with TypeScript
+- **Backend**: Supabase (PostgreSQL + Authentication)
+- **Payment Processing**: Stripe
+- **Deployment**: Vercel
+- **Edge Functions**: Supabase Edge Functions for serverless operations
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/589d003d-74bc-4c45-9525-8f7f826ed286) and start prompting.
+## Project Structure
 
-Changes made via Lovable will be committed automatically to this repo.
+### Core Application Files
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── App.tsx                 # Main application component with routing setup
+├── main.tsx               # Application entry point
+├── index.html             # HTML template with Stripe.js integration
 ```
 
-**Edit a file directly in GitHub**
+### Components
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+src/components/
+├── auth/
+│   └── LoginForm.tsx      # Authentication form component
+├── dashboard/
+│   └── Dashboard.tsx      # Main dashboard interface
+├── subscription/
+│   └── SubscriptionPage.tsx # Subscription management component
+├── Navbar.tsx             # Navigation component with responsive design
+└── Payment.tsx            # Payment processing component
+```
 
-**Use GitHub Codespaces**
+### Supabase Integration
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+src/lib/
+└── supabase.ts           # Supabase client configuration and utility functions
 
-## What technologies are used for this project?
+supabase/
+├── functions/            # Edge Functions
+│   ├── create-checkout/  # Stripe checkout session creation
+│   ├── stripe-webhook/   # Stripe webhook handler
+│   ├── debug-webhook/    # Webhook debugging utility
+│   ├── newsapi/         # News API integration
+│   └── openai-news/     # OpenAI integration for news
+├── migrations/          # Database migrations
+└── config.toml         # Supabase configuration
+```
 
-This project is built with .
+### Database Schema
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The application uses the following main tables:
 
-## How can I deploy this project?
+- `profiles`: User profile information
+- `subscriptions`: Subscription status and details
+- `resources`: AI implementation resources
+- `links`: Curated external links and references
 
-Simply open [Lovable](https://lovable.dev/projects/589d003d-74bc-4c45-9525-8f7f826ed286) and click on Share -> Publish.
+### Database Schema Details
 
-## I want to use a custom domain - is that possible?
+#### Auth Schema (Managed by Supabase)
+```sql
+-- auth.users (managed by Supabase)
+-- This table is automatically managed by Supabase Auth
+CREATE TABLE auth.users (
+  id UUID PRIMARY KEY,
+  email TEXT UNIQUE,
+  encrypted_password TEXT,
+  email_confirmed_at TIMESTAMPTZ,
+  invited_at TIMESTAMPTZ,
+  confirmation_token TEXT,
+  confirmation_sent_at TIMESTAMPTZ,
+  recovery_token TEXT,
+  recovery_sent_at TIMESTAMPTZ,
+  email_change_token TEXT,
+  email_change TEXT,
+  email_change_sent_at TIMESTAMPTZ,
+  last_sign_in_at TIMESTAMPTZ,
+  raw_app_meta_data JSONB,
+  raw_user_meta_data JSONB,
+  is_super_admin BOOLEAN,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ,
+  phone TEXT UNIQUE,
+  phone_confirmed_at TIMESTAMPTZ,
+  phone_change TEXT,
+  phone_change_token TEXT,
+  phone_change_sent_at TIMESTAMPTZ,
+  confirmed_at TIMESTAMPTZ,
+  email_change_confirm_status SMALLINT,
+  banned_until TIMESTAMPTZ,
+  reauthentication_token TEXT,
+  reauthentication_sent_at TIMESTAMPTZ
+);
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+-- Reference this in other tables using:
+-- user_id UUID REFERENCES auth.users(id)
+```
+
+#### Public Schema Tables
+
+##### Profiles Table
+```sql
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  email TEXT,
+  first_name TEXT,
+  last_name TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX profiles_email_idx ON public.profiles(email);
+```
+
+##### Subscriptions Table
+```sql
+CREATE TABLE public.subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('active', 'canceled', 'expired', 'trialing', 'past_due')),
+  current_period_start TIMESTAMPTZ NOT NULL,
+  current_period_end TIMESTAMPTZ NOT NULL,
+  stripe_subscription_id TEXT,
+  stripe_customer_id TEXT,
+  cancel_at TIMESTAMPTZ,
+  canceled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX subscriptions_user_id_idx ON public.subscriptions(user_id);
+CREATE INDEX subscriptions_stripe_subscription_id_idx ON public.subscriptions(stripe_subscription_id);
+CREATE INDEX subscriptions_stripe_customer_id_idx ON public.subscriptions(stripe_customer_id);
+```
+
+##### Resources Table
+```sql
+CREATE TABLE public.resources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  url TEXT,
+  image_url TEXT,
+  category TEXT,
+  tags TEXT[],
+  user_id UUID REFERENCES auth.users(id),
+  published BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX resources_user_id_idx ON public.resources(user_id);
+CREATE INDEX resources_category_idx ON public.resources(category);
+CREATE INDEX resources_tags_idx ON public.resources USING GIN(tags);
+```
+
+##### Links Table
+```sql
+CREATE TABLE public.links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  url TEXT NOT NULL,
+  description TEXT,
+  category TEXT,
+  user_id UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX links_user_id_idx ON public.links(user_id);
+CREATE INDEX links_category_idx ON public.links(category);
+```
+
+#### Database Functions
+```sql
+-- Automatically update timestamps
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Handle new user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email)
+  VALUES (NEW.id, NEW.email)
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check subscription status
+CREATE OR REPLACE FUNCTION public.check_subscription(uid UUID)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM subscriptions
+    WHERE user_id = uid
+    AND status = 'active'
+    AND current_period_end > now()
+    AND (cancel_at IS NULL OR cancel_at > now())
+  );
+END;
+$$;
+```
+
+### Scripts
+
+```
+scripts/
+├── fix_rls_policies.sql        # Row Level Security policy setup
+├── create_subscriptions_table.sql # Subscription table creation
+├── create_profiles_table.sql   # Profile table creation
+├── create_resources_table.sql  # Resource table creation
+├── create_links_table.sql      # Links table creation
+└── various test scripts        # Testing utilities
+```
+
+## Key Features
+
+1. **Authentication**
+   - Email/password authentication
+   - Protected routes
+   - Profile management
+
+2. **Subscription Management**
+   - Stripe integration
+   - Subscription status tracking
+   - Payment processing
+
+3. **Resource Access**
+   - Curated AI resources
+   - Implementation guides
+   - External links library
+
+4. **Security**
+   - Row Level Security (RLS) policies
+   - Protected API endpoints
+   - Secure payment processing
+
+## Stripe Integration & Payment Processing
+
+### Checkout Flow
+1. **Checkout Session Creation**
+   - When a user initiates a subscription:
+     - Frontend calls the `create-checkout` Edge Function
+     - Function creates a Stripe Checkout Session with the user's ID
+     - User is redirected to Stripe's hosted checkout page
+
+2. **Webhook Processing**
+   - Stripe webhooks are handled by the `stripe-webhook` Edge Function
+   - Key events processed:
+     - `checkout.session.completed`: Creates initial subscription
+     - `customer.subscription.updated`: Updates subscription status
+     - `customer.subscription.deleted`: Handles cancellations
+
+3. **Subscription Management**
+   ```typescript
+   // Example subscription object structure
+   interface Subscription {
+     id: string;
+     user_id: string;
+     plan: string;
+     status: 'active' | 'canceled' | 'expired' | 'trialing';
+     current_period_start: string;
+     current_period_end: string;
+   }
+   ```
+
+### Testing & Debugging
+- Debug webhook endpoint for local testing
+- Stripe CLI integration for webhook forwarding
+- Test scripts for subscription creation and management
+
+## Supabase User Management & Database Structure
+
+### User Authentication Flow
+1. **Sign Up Process**
+   - User creates account through Supabase Auth
+   - Trigger automatically creates profile record
+   - Profile linked to auth.users through RLS policies
+
+2. **Profile Management**
+   ```sql
+   -- Profile table structure
+   CREATE TABLE public.profiles (
+     id UUID PRIMARY KEY REFERENCES auth.users(id),
+     email TEXT,
+     first_name TEXT,
+     last_name TEXT,
+     avatar_url TEXT,
+     created_at TIMESTAMPTZ,
+     updated_at TIMESTAMPTZ
+   );
+   ```
+
+### Subscription Management
+1. **Database Structure**
+   ```sql
+   -- Subscriptions table structure
+   CREATE TABLE public.subscriptions (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id UUID REFERENCES auth.users(id),
+     plan TEXT NOT NULL,
+     status TEXT CHECK (status IN ('active', 'canceled', 'expired', 'trialing')),
+     current_period_start TIMESTAMPTZ,
+     current_period_end TIMESTAMPTZ,
+     stripe_subscription_id TEXT
+   );
+   ```
+
+2. **Row Level Security**
+   ```sql
+   -- Example RLS policies
+   CREATE POLICY "Users can view their own subscriptions"
+   ON public.subscriptions FOR SELECT
+   USING (auth.uid() = user_id);
+
+   CREATE POLICY "Only authenticated users can insert"
+   ON public.subscriptions FOR INSERT
+   WITH CHECK (auth.uid() = user_id);
+   ```
+
+3. **Subscription Checking**
+   ```sql
+   -- Function to check active subscription
+   CREATE FUNCTION public.check_subscription(uid UUID) RETURNS boolean
+   LANGUAGE plpgsql SECURITY DEFINER AS $$
+   BEGIN
+     RETURN EXISTS (
+       SELECT 1 FROM subscriptions
+       WHERE user_id = uid
+       AND status = 'active'
+       AND current_period_end > now()
+     );
+   END;
+   $$;
+   ```
+
+### Edge Functions
+1. **Stripe Integration Functions**
+   - `create-checkout`: Creates Stripe checkout sessions
+   - `stripe-webhook`: Processes Stripe webhook events
+   - `debug-webhook`: Helps debug webhook issues
+
+2. **Resource Access**
+   - Protected routes check subscription status
+   - RLS policies enforce access control
+   - Automatic profile creation on signup
+
+### Testing & Verification
+1. **Subscription Testing**
+   - Test scripts for subscription creation
+   - Webhook testing utilities
+   - RLS policy verification
+
+2. **User Management Testing**
+   - Profile creation verification
+   - Authentication flow testing
+   - Access control validation
+
+## Environment Variables
+
+Required environment variables:
+
+```
+# Supabase
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Stripe
+VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+VITE_STRIPE_PRICE_ID=your_stripe_price_id
+```
+
+## Development Setup
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables
+4. Run development server: `npm run dev`
+
+## Deployment
+
+The application is configured for deployment on Vercel with the following setup:
+
+- Automatic deployments from the main branch
+- Environment variables configured in Vercel dashboard
+- Edge functions deployed to Supabase
+
+## Database Management
+
+The application uses Supabase as the backend with:
+
+- Automated user profile creation
+- Subscription tracking
+- Resource management
+- Row Level Security policies
+
+## Testing
+
+Various test scripts are available in the `scripts/` directory for:
+
+- Webhook testing
+- Subscription management
+- Database operations
+- RLS policy verification
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Push to the branch
+5. Create a Pull Request
+
+## Implementation Files
+
+### Database & RLS Policies
+```
+scripts/
+├── create_profiles_table.sql          # Profile table creation and RLS
+├── create_subscriptions_table.sql     # Subscription table creation and RLS
+├── create_resources_table.sql         # Resources table creation and RLS
+├── create_links_table.sql            # Links table creation and RLS
+├── fix_rls_policies.sql              # RLS policy fixes and updates
+└── check_subscriptions_table.sql     # Subscription table verification
+```
+
+### Supabase Edge Functions
+```
+supabase/functions/
+├── create-checkout/
+│   ├── index.ts                      # Stripe checkout session creation
+│   └── function.ts                   # Function configuration
+├── stripe-webhook/
+│   ├── index.ts                      # Stripe webhook event handling
+│   └── function.ts                   # Webhook configuration
+├── debug-webhook/
+│   ├── index.ts                      # Webhook debugging utilities
+│   └── function.ts                   # Debug configuration
+├── newsapi/
+│   ├── index.ts                      # News API integration
+│   └── function.ts                   # API configuration
+└── openai-news/
+    ├── index.ts                      # OpenAI integration
+    └── function.ts                   # OpenAI configuration
+```
+
+### Stripe Integration
+```
+src/components/
+├── subscription/
+│   └── SubscriptionPage.tsx          # Subscription UI and checkout flow
+└── Payment.tsx                       # Payment processing component
+
+src/lib/
+└── supabase.ts                       # Subscription and profile management functions
+
+scripts/
+├── test-webhook.js                   # Stripe webhook testing
+├── test-stripe-webhook.js            # Advanced webhook testing
+├── check-subscriptions.js            # Subscription verification
+└── forward-stripe-events.sh          # Local webhook forwarding
+```
+
+### Testing & Verification
+```
+scripts/
+├── test-supabase-connection.js       # Database connection testing
+├── test-insert-subscription.js       # Subscription creation testing
+├── test-logs.js                      # Webhook logging utilities
+├── check_direct_subscription.js      # Direct subscription verification
+└── apply_rls_fixes.js               # RLS policy application
+```
+
+## License
+
+[Add your license information here]

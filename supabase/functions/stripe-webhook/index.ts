@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import Stripe from "https://esm.sh/stripe@13.11.0";
+import {
+  handleCheckoutSessionCompleted,
+  handleSubscriptionUpdated,
+  handleSubscriptionDeleted,
+  handleInvoicePaid,
+  handleInvoicePaymentFailed
+} from './handlers.ts';
 
 // CORS headers for browser requests
 const corsHeaders = {
@@ -286,6 +293,28 @@ serve(async (req) => {
           headers: corsHeaders,
         });
       }
+    }
+
+    // Handle different event types
+    switch (event.type) {
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdated(event.data.object, supabase);
+        break;
+
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object, supabase);
+        break;
+
+      case 'invoice.paid':
+        await handleInvoicePaid(event.data.object, supabase);
+        break;
+
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(event.data.object, supabase);
+        break;
+
+      default:
+        console.log('Unhandled event type:', event.type);
     }
 
     // Return a response for other event types
