@@ -76,5 +76,11 @@ gcp_project_number = ""
 gcp_jwt_path = "supabase/gcloud.json"
 
 [functions]
-[functions.stripe-webhook]
+[functions.create-stripe-customer]
+verify_jwt = false
+
+[functions.manage-subscription]
+verify_jwt = true
+
+[functions.simple-stripe-webhook]
 verify_jwt = false
