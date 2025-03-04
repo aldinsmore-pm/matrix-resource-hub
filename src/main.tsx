@@ -1,5 +1,5 @@
-
 import { createRoot } from 'react-dom/client'
+import { AuthProvider } from './contexts/AuthContext'
 import App from './App.tsx'
 import './index.css'
 
@@ -18,7 +18,11 @@ if (!rootElement) {
       console.error('Global error caught:', event.error);
     });
     
-    root.render(<App />);
+    root.render(
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    );
     console.log("React application rendered successfully");
   } catch (error) {
     console.error("Error rendering React application:", error);
