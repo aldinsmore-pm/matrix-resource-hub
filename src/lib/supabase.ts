@@ -25,6 +25,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 console.log("Supabase client initialized");
 console.log("API URL:", supabaseUrl);
 
+// Types for the subscription system
 export type Profile = {
   id: string;
   email: string;
@@ -40,259 +41,252 @@ export type Subscription = {
   status: 'active' | 'canceled' | 'expired' | 'trialing';
   current_period_start: string;
   current_period_end: string;
+  stripe_subscription_id?: string;
+  price_id?: string;
+  quantity?: number;
+  cancel_at_period_end?: boolean;
+  cancel_at?: string;
+  canceled_at?: string;
+  ended_at?: string;
 };
 
+export type StripeCustomer = {
+  id: string;
+  user_id: string;
+  stripe_customer_id: string;
+  email: string;
+};
+
+/**
+ * Get the user's profile from Supabase
+ */
 export async function getProfile(): Promise<Profile | null> {
   try {
-    console.log("Getting current user...");
-    const { data: user, error: userError } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (userError) {
-      console.error("Error getting user:", userError);
-      throw userError;
-    }
-    
-    if (!user.user) {
-      console.log("No user found");
+    if (!user) {
+      console.warn('getProfile: No authenticated user found');
       return null;
     }
     
-    console.log("User found, fetching profile...");
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.user.id)
-        .single();
-        
-      if (error) {
-        console.error("Error fetching profile:", error);
-        // Create a minimal profile if none exists or if there's a table error
-        if (error.code === 'PGRST116' || error.code === '42P01') {
-          // Either no profile exists or the table doesn't exist
-          console.log("Creating default profile object since profiles table doesn't exist or profile not found");
-          return {
-            id: user.user.id,
-            email: user.user.email || '',
-            first_name: null,
-            last_name: null,
-            avatar_url: null
-          };
-        }
-        throw error;
-      }
-      
-      console.log("Profile fetched successfully");
-      return data;
-    } catch (error: any) {
-      // Handle the case where the profiles table doesn't exist
-      if (error.code === '42P01') { // relation does not exist
-        console.log("Profiles table doesn't exist, creating default profile");
-        return {
-          id: user.user.id,
-          email: user.user.email || '',
-          first_name: null,
-          last_name: null,
-          avatar_url: null
-        };
-      }
-      throw error;
-    }
-  } catch (error) {
-    console.error("getProfile error:", error);
-    // Return a basic profile instead of throwing to avoid breaking the dashboard
-    return {
-      id: 'unknown',
-      email: 'unknown',
-      first_name: null,
-      last_name: null,
-      avatar_url: null
-    };
-  }
-}
-
-export async function getSubscription(): Promise<Subscription | null> {
-  try {
-    console.log("Getting current user for purchase verification...");
-    const { data: user, error: userError } = await supabase.auth.getUser();
-    
-    if (userError) {
-      console.error("Error getting user for purchase verification:", userError);
-      throw userError;
-    }
-    
-    if (!user.user) {
-      console.log("No user found for purchase verification");
-      return null;
-    }
-    
-    console.log("User found, checking purchase status...");
     const { data, error } = await supabase
-      .from('subscriptions')
+      .from('profiles')
       .select('*')
-      .eq('user_id', user.user.id)
-      .eq('status', 'active')
+      .eq('id', user.id)
       .single();
-      
+    
     if (error) {
-      // If no purchase found, return null
-      if (error.code === 'PGRST116') {
-        console.log("No active purchase found");
-        return null;
-      }
-      console.error("Error checking purchase status:", error);
-      throw error;
+      console.error('Error fetching profile:', error);
+      return null;
     }
     
-    console.log("Purchase verification successful");
-    return data;
+    return data || null;
   } catch (error) {
-    console.error("getSubscription error:", error);
-    // Return null instead of throwing to handle the case gracefully
+    console.error('Error in getProfile:', error);
     return null;
   }
 }
 
+/**
+ * Get the user's Stripe customer ID from the stripe_customers table
+ */
+export async function getStripeCustomer(): Promise<StripeCustomer | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.warn('getStripeCustomer: No authenticated user found');
+      return null;
+    }
+    
+    const { data, error } = await supabase
+      .from('stripe_customers')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching Stripe customer:', error);
+      return null;
+    }
+    
+    return data || null;
+  } catch (error) {
+    console.error('Error in getStripeCustomer:', error);
+    return null;
+  }
+}
+
+/**
+ * Get the user's subscription information 
+ */
+export async function getSubscription(): Promise<Subscription | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.warn('getSubscription: No authenticated user found');
+      return null;
+    }
+
+    // Get the user's active subscription
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['active', 'trialing'])
+      .order('created', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching subscription:', error);
+      return null;
+    }
+    
+    return data || null;
+  } catch (error) {
+    console.error('Error in getSubscription:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if the user has an active subscription
+ */
 export const isSubscribed = async (): Promise<boolean> => {
   try {
-    console.log("isSubscribed: Checking subscription status...");
+    const { data: { user } } = await supabase.auth.getUser();
     
-    // First, get the current user
-    const { data: user, error: userError } = await supabase.auth.getUser();
-    
-    if (userError) {
-      console.error("isSubscribed: Error getting user:", userError);
+    if (!user) {
+      console.log('isSubscribed: No authenticated user found');
       return false;
     }
-    
-    if (!user.user) {
-      console.log("isSubscribed: No authenticated user found");
-      return false;
-    }
-    
-    // Method 1: Try direct query first but avoid using maybeSingle() since the user might have multiple active subscriptions
+
+    // First try: Direct query to subscriptions table
     try {
-      const { data, error, status } = await supabase
+      console.log('Checking subscription via direct query...');
+      const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('user_id', user.user.id)
-        .eq('status', 'active')
-        .limit(1);
-      
-      console.log(`isSubscribed: Query response - Status: ${status}, Error: ${error ? JSON.stringify(error) : 'None'}`);
-      
-      if (!error && data && data.length > 0) {
-        console.log(`isSubscribed: Active subscription found, ID: ${data[0].id}`);
-        return true;
-      }
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .gte('current_period_end', new Date().toISOString())
+        .maybeSingle();
       
       if (error) {
-        // If we got an error, log it but continue to fallback methods
-        console.error('isSubscribed: Error checking subscription status:', error);
-        
-        // Add specific debugging for 406 errors and other cases
-        if (status === 406) {
-          console.error('isSubscribed: Received 406 Not Acceptable error. This may indicate a header or content negotiation issue.');
-          console.error('isSubscribed: Request headers may be inconsistent with server expectations.');
-        }
-      } else {
-        console.log('isSubscribed: No active subscriptions found in direct query');
+        console.warn('Direct query error, will try fallback methods:', error.message);
+      } else if (data) {
+        console.log('Active subscription found via direct query');
+        return true;
       }
-    } catch (queryError) {
-      console.error('isSubscribed: Error in direct query:', queryError);
+    } catch (directQueryError) {
+      console.warn('Error in direct subscription query:', directQueryError);
     }
-    
-    // Method 2: Fall back to RPC function which is more reliable and has proper security checks
-    console.log('isSubscribed: Attempting fallback using check_subscription RPC function...');
-    const { data: rpcData, error: rpcError } = await supabase.rpc(
-      'check_subscription', 
-      { uid: user.user.id }
-    );
-    
-    if (rpcError) {
-      console.error('isSubscribed: Fallback RPC failed:', rpcError);
+
+    // Second try: RPC function as fallback
+    try {
+      console.log('Checking subscription via RPC function...');
+      const { data, error } = await supabase.rpc('check_subscription');
       
-      // Method 3: Last resort - check if any subscription exists for this user with a different approach
-      try {
-        const { count, error: countError } = await supabase
-          .from('subscriptions')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.user.id)
-          .eq('status', 'active');
-          
-        if (!countError && count && count > 0) {
-          console.log(`isSubscribed: Found ${count} active subscriptions through count query`);
-          return true;
-        }
-      } catch (lastError) {
-        console.error('isSubscribed: All methods failed:', lastError);
+      if (error) {
+        console.warn('RPC function error:', error.message);
+      } else {
+        console.log('check_subscription RPC result:', data);
+        return !!data;
       }
-      
+    } catch (rpcError) {
+      console.warn('Error calling check_subscription RPC:', rpcError);
+    }
+
+    // Last resort: Count any active subscriptions
+    console.log('Trying last resort method...');
+    const { count, error: countError } = await supabase
+      .from('subscriptions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'active');
+    
+    if (countError) {
+      console.error('Failed all subscription check methods:', countError);
       return false;
     }
     
-    console.log('isSubscribed: Fallback RPC result:', rpcData);
-    return !!rpcData;
-  } catch (e) {
-    console.error('isSubscribed: Unexpected error checking subscription:', e);
+    return count !== null && count > 0;
+  } catch (error) {
+    console.error('Error checking subscription status:', error);
     return false;
   }
 };
 
-export async function createSubscription(plan: string, durationDays: number = 365): Promise<Subscription | null> {
-  const { data: user } = await supabase.auth.getUser();
-  
-  if (!user.user) return null;
-  
-  // Set end date based on duration parameter
-  const endDate = new Date();
-  endDate.setDate(endDate.getDate() + durationDays);
-  
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .insert({
-      user_id: user.user.id,
-      plan: plan,
-      status: 'active',
-      current_period_start: new Date().toISOString(),
-      current_period_end: endDate.toISOString()
-    })
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error creating subscription record:', error);
+/**
+ * Redirect to Stripe Customer Portal for subscription management
+ */
+export const redirectToCustomerPortal = async (returnUrl?: string): Promise<string | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.error('No authenticated session found');
+      return null;
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/manage-subscription`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        customReturnUrl: returnUrl || window.location.origin
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Error redirecting to customer portal: ${errorData.error || response.statusText}`);
+    }
+
+    const { url } = await response.json();
+    return url;
+  } catch (error) {
+    console.error('Error redirecting to customer portal:', error);
     return null;
   }
+};
+
+/**
+ * Create a new subscription (legacy function for compatibility)
+ */
+export async function createSubscription(plan: string, durationDays: number = 365): Promise<Subscription | null> {
+  console.warn('createSubscription is deprecated, use redirectToCustomerPortal instead');
   
-  return data;
+  try {
+    const portalUrl = await redirectToCustomerPortal();
+    if (portalUrl) {
+      window.location.href = portalUrl;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error in createSubscription:', error);
+    return null;
+  }
 }
 
+/**
+ * Create a purchase (legacy function for compatibility)
+ */
 export async function createPurchase(): Promise<Subscription | null> {
-  const { data: user } = await supabase.auth.getUser();
+  console.warn('createPurchase is deprecated, use redirectToCustomerPortal instead');
   
-  if (!user.user) return null;
-  
-  // Set end date to never expire (far future date)
-  const endDate = new Date();
-  endDate.setFullYear(endDate.getFullYear() + 100); // 100 years in the future
-  
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .insert({
-      user_id: user.user.id,
-      plan: "Professional",
-      status: 'active',
-      current_period_start: new Date().toISOString(),
-      current_period_end: endDate.toISOString()
-    })
-    .select()
-    .single();
-  
-  if (error) {
-    console.error('Error creating purchase record:', error);
+  try {
+    const portalUrl = await redirectToCustomerPortal();
+    if (portalUrl) {
+      window.location.href = portalUrl;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error in createPurchase:', error);
     return null;
   }
-  
-  return data;
 }
