@@ -170,33 +170,33 @@ export const isSubscribed = async (): Promise<boolean> => {
       return false;
     }
     
-    // Debug header value
-    console.log("isSubscribed: Using Accept header:", "application/json");
-    
-    // Method 1: Try direct query first
+    // Method 1: Try direct query first but avoid using maybeSingle() since the user might have multiple active subscriptions
     try {
       const { data, error, status } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.user.id)
         .eq('status', 'active')
-        .maybeSingle();
+        .limit(1);
       
       console.log(`isSubscribed: Query response - Status: ${status}, Error: ${error ? JSON.stringify(error) : 'None'}`);
       
-      if (!error) {
-        const hasActiveSubscription = !!data;
-        console.log(`isSubscribed: Active subscription found: ${hasActiveSubscription}`, data ? `ID: ${data.id}` : '');
-        return hasActiveSubscription;
+      if (!error && data && data.length > 0) {
+        console.log(`isSubscribed: Active subscription found, ID: ${data[0].id}`);
+        return true;
       }
       
-      // If we got an error, but not a 'not found' error, try the fallback
-      console.error('isSubscribed: Error checking subscription status:', error);
-      
-      // Add specific debugging for 406 errors and other cases
-      if (status === 406) {
-        console.error('isSubscribed: Received 406 Not Acceptable error. This may indicate a header or content negotiation issue.');
-        console.error('isSubscribed: Request headers may be inconsistent with server expectations.');
+      if (error) {
+        // If we got an error, log it but continue to fallback methods
+        console.error('isSubscribed: Error checking subscription status:', error);
+        
+        // Add specific debugging for 406 errors and other cases
+        if (status === 406) {
+          console.error('isSubscribed: Received 406 Not Acceptable error. This may indicate a header or content negotiation issue.');
+          console.error('isSubscribed: Request headers may be inconsistent with server expectations.');
+        }
+      } else {
+        console.log('isSubscribed: No active subscriptions found in direct query');
       }
     } catch (queryError) {
       console.error('isSubscribed: Error in direct query:', queryError);
@@ -212,17 +212,16 @@ export const isSubscribed = async (): Promise<boolean> => {
     if (rpcError) {
       console.error('isSubscribed: Fallback RPC failed:', rpcError);
       
-      // Method 3: Last resort - check if any subscription exists for this user
+      // Method 3: Last resort - check if any subscription exists for this user with a different approach
       try {
-        const { data: anySubData, error: anySubError } = await supabase
+        const { count, error: countError } = await supabase
           .from('subscriptions')
-          .select('id, status')
+          .select('*', { count: 'exact', head: true })
           .eq('user_id', user.user.id)
-          .eq('status', 'active')
-          .limit(1);
+          .eq('status', 'active');
           
-        if (!anySubError && anySubData && anySubData.length > 0) {
-          console.log('isSubscribed: Found active subscription through basic query');
+        if (!countError && count && count > 0) {
+          console.log(`isSubscribed: Found ${count} active subscriptions through count query`);
           return true;
         }
       } catch (lastError) {
