@@ -49,9 +49,9 @@ async function main() {
   console.log(`- Subscription ID: ${payload.data.object.subscription}`);
   
   // Get the webhook URL - use Supabase project URL if available
-  // For production, this would be https://bobnfoppduagvvaktebt.supabase.co/functions/v1/stripe-webhook
+  // For production, this would be https://bobnfoppduagvvaktebt.supabase.co/functions/v1/simple-stripe-webhook
   const webhookUrl = process.env.SUPABASE_WEBHOOK_URL || 
-                     'https://bobnfoppduagvvaktebt.supabase.co/functions/v1/stripe-webhook';
+                     'https://bobnfoppduagvvaktebt.supabase.co/functions/v1/simple-stripe-webhook';
   
   console.log(`\nSending webhook to: ${webhookUrl}`);
   
