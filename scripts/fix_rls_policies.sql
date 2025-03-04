@@ -1,19 +1,19 @@
 -- Fix RLS policies for all tables to ensure proper access
 
 -- Drop existing RLS policies if they exist
-DROP POLICY IF EXISTS "Enable read access for all users" ON "public"."subscriptions";
-DROP POLICY IF EXISTS "Enable read access for all users" ON "public"."profiles";
+DROP POLICY IF EXISTS "Users can view own data" ON "public"."subscriptions";
+DROP POLICY IF EXISTS "Users can view own profile" ON "public"."profiles";
 DROP POLICY IF EXISTS "Enable read access for all users" ON "public"."resources";
 DROP POLICY IF EXISTS "Enable read access for all users" ON "public"."links";
 
--- Create RLS policies to allow public access
-CREATE POLICY "Enable read access for all users" ON "public"."subscriptions"
+-- Create RLS policies with proper restrictions
+CREATE POLICY "Users can view own data" ON "public"."subscriptions"
 FOR SELECT
-USING (true);
+USING (auth.uid() = user_id);
 
-CREATE POLICY "Enable read access for all users" ON "public"."profiles"
+CREATE POLICY "Users can view own profile" ON "public"."profiles"
 FOR SELECT
-USING (true);
+USING (auth.uid() = id);
 
 CREATE POLICY "Enable read access for all users" ON "public"."resources"
 FOR SELECT
@@ -45,11 +45,17 @@ BEGIN
 END;
 $$;
 
--- Grant access to function
-GRANT EXECUTE ON FUNCTION public.check_subscription TO public;
+-- Grant access to functions
+GRANT EXECUTE ON FUNCTION public.check_subscription TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_top_tags TO public;
 GRANT EXECUTE ON FUNCTION public.set_updated_at TO public;
 GRANT EXECUTE ON FUNCTION public.handle_new_user TO public;
+
+-- Enable RLS on all tables
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.links ENABLE ROW LEVEL SECURITY;
 
 -- Make sure the test user has a profile
 INSERT INTO public.profiles (id, email, full_name, avatar_url, website, updated_at)
