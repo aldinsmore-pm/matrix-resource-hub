@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../lib/supabase";
@@ -133,9 +132,9 @@ const LoginForm = () => {
               Remember me
             </label>
           </div>
-          <a href="#" className="text-sm text-matrix-primary hover:underline">
+          <Link to="/forgot-password" className="text-sm text-matrix-primary hover:underline">
             Forgot password?
-          </a>
+          </Link>
         </div>
         
         <div>
@@ -156,9 +155,9 @@ const LoginForm = () => {
         <div className="text-center mt-4">
           <p className="text-sm text-gray-400">
             Don't have an account?{" "}
-            <a href="/signup" className="text-matrix-primary hover:underline">
+            <Link to="/signup" className="text-matrix-primary hover:underline">
               Sign up
-            </a>
+            </Link>
           </p>
         </div>
       </form>

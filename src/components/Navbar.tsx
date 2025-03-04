@@ -98,9 +98,9 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <a href="/" className="text-xl md:text-2xl font-bold text-matrix-primary text-glow">
+            <Link to="/" className="text-xl md:text-2xl font-bold text-matrix-primary text-glow">
               Aire
-            </a>
+            </Link>
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
@@ -130,12 +130,12 @@ const Navbar = () => {
                     {userEmail}
                   </span>
                 )}
-                <a 
-                  href="/dashboard" 
+                <Link 
+                  to="/dashboard" 
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Dashboard
-                </a>
+                </Link>
                 <button 
                   onClick={handleLogout}
                   className="text-matrix-primary hover:text-matrix-primary hover:underline transition-colors"
@@ -145,15 +145,15 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex items-center space-x-4">
-                <a 
-                  href="/login" 
+                <Link 
+                  to="/login" 
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Log In
-                </a>
-                <a href="/signup" className="matrix-btn">
+                </Link>
+                <Link to="/signup" className="matrix-btn">
                   Sign Up
-                </a>
+                </Link>
               </div>
             )}
           </div>
@@ -222,35 +222,35 @@ const Navbar = () => {
 
 const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   return (
-    <a
-      href={href}
+    <Link
+      to={href}
       className="relative group text-gray-300 hover:text-white transition-colors"
     >
       {children}
       <div className="focus-line"></div>
-    </a>
+    </Link>
   );
 };
 
 const DropdownLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   return (
-    <a
-      href={href}
+    <Link
+      to={href}
       className="block px-4 py-2 text-sm text-gray-300 hover:text-matrix-primary hover:bg-matrix-muted transition-colors"
     >
       {children}
-    </a>
+    </Link>
   );
 };
 
 const MobileNavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
   return (
-    <a
-      href={href}
+    <Link
+      to={href}
       className="block py-2 text-gray-300 hover:text-matrix-primary transition-colors"
     >
       {children}
-    </a>
+    </Link>
   );
 };
 

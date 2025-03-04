@@ -22,3 +22,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Supabase
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# Testing scripts (may contain sensitive info)
+test-*.js
+check-*.js
+forward-*.sh
+.vercel
